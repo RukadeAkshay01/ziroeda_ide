@@ -1,0 +1,5 @@
+{
+  "name": "AI Circuit Architect",
+  "description": "An AI-powered circuit designer that visually arranges electronics components based on natural language descriptions using Wokwi elements.",
+  "requestFramePermissions": []
+}

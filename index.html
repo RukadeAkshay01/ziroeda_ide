@@ -1,0 +1,52 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Circuit Architect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="https://unpkg.com/@wokwi/elements@0.48.3/dist/wokwi-elements.bundle.js"></script>
+    <style>
+      /* Custom scrollbar for chat */
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+      
+      /* Dot Grid background for canvas */
+      .bg-grid {
+        background-size: 24px 24px;
+        background-image: radial-gradient(circle, rgba(255, 255, 255, 0.15) 1.5px, transparent 1.5px);
+      }
+
+      /* Basic Layout resets */
+      html, body, #root {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19",
+    "react/": "https://esm.sh/react@19/",
+    "react-dom": "https://esm.sh/react-dom@19",
+    "react-dom/": "https://esm.sh/react-dom@19/",
+    "uuid": "https://esm.sh/uuid@11.0.5",
+    "lucide-react": "https://esm.sh/lucide-react?bundle",
+    "@google/genai": "https://esm.sh/@google/genai",
+    "avr8js": "https://esm.sh/avr8js?bundle"
+  }
+}
+</script>
+</head>
+  <body class="bg-[#0b0d11] text-white">
+    <div id="root"></div>
+  </body>
+</html>
