@@ -21,8 +21,8 @@ const ComponentRenderer = forwardRef<HTMLElement, Props>(({ component }, ref) =>
     ...mappedAttributes,
     title: label || component.id,
     id: component.id,
-    // Critical: Force the Wokwi custom element to fill the parent div
-    style: { width: '100%', height: '100%', display: 'block' } 
+    // Allow the Wokwi element to define its own dimensions
+    style: { display: 'block' } 
   };
 
   // Dynamically render the component to bypass JSX.IntrinsicElements strict typing
@@ -32,8 +32,8 @@ const ComponentRenderer = forwardRef<HTMLElement, Props>(({ component }, ref) =>
   }
 
   return (
-    <div ref={ref as any} className="w-full h-full bg-red-500 flex items-center justify-center text-xs text-white border border-red-400">
-      Unknown
+    <div ref={ref as any} className="w-24 h-24 bg-red-500 flex items-center justify-center text-xs text-white border border-red-400 p-2 text-center break-words">
+      {type}
     </div>
   );
 });

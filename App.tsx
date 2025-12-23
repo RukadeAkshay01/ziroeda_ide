@@ -1,15 +1,22 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ChatInterface from './components/ChatInterface';
-import Canvas from './components/Canvas';
+import Canvas, { CanvasHandle } from './components/Canvas';
 import ComponentLibrary from './components/ComponentLibrary';
 import UpperToolbar from './components/UpperToolbar';
 import LowerToolbar from './components/LowerToolbar';
 import CodeEditor from './components/CodeEditor';
+import PropertiesPanel from './components/PropertiesPanel';
+import BillOfMaterials from './components/BillOfMaterials';
+import SerialMonitor from './components/SerialMonitor';
 import { generateCircuitDesign } from './services/geminiService';
-import { compileArduinoCode, AVRRunner, SimulationUpdate } from './services/simulationService';
-import { ChatMessage, CircuitComponent, WokwiConnection, ComponentType } from './types';
+import { ChatMessage, CircuitComponent, WokwiConnection } from './types';
 import { v4 as uuidv4 } from 'uuid';
+import { MessageSquare } from 'lucide-react';
+
+import { useCircuitHistory } from './hooks/useCircuitHistory';
+import { useSimulationRunner } from './hooks/useSimulationRunner';
+import { useComponentActions } from './hooks/useComponentActions';
 
 const App: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([{
@@ -18,20 +25,119 @@ const App: React.FC = () => {
     text: "Hello! I'm Ziro, your expert AI electronics engineer. I can help you design, understand, and build electronic circuits. What can I do for you today?"
   }]);
   
+  // Circuit State
   const [components, setComponents] = useState<CircuitComponent[]>([]);
   const [connections, setConnections] = useState<WokwiConnection[]>([]);
   const [arduinoCode, setArduinoCode] = useState<string>('');
   
-  // Simulation State
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [isCompiling, setIsCompiling] = useState(false);
-  const [simulationPinStates, setSimulationPinStates] = useState<Record<string, number>>({});
-  const runnerRef = useRef<AVRRunner | null>(null);
+  // Hooks
+  const { historyIndex, historyLength, saveToHistory, undo, redo, resetHistory } = useCircuitHistory();
+  const { 
+    isSimulating, 
+    isCompiling, 
+    simulationPinStates, 
+    serialOutput,
+    toggleSimulation, 
+    resetSimulation, 
+    stopSimulation,
+    sendSerialInput,
+    clearSerialOutput 
+  } = useSimulationRunner(arduinoCode);
 
+  // Selection & UI State
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+  const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
+  const [isBOMOpen, setIsBOMOpen] = useState(false); 
+  const [isSerialMonitorOpen, setIsSerialMonitorOpen] = useState(false);
+  
+  // Responsive UI State
+  const [isLibraryOpen, setIsLibraryOpen] = useState(true);
+  const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // FAB Drag State
+  const [fabPos, setFabPos] = useState<{x: number, y: number} | null>(null);
+  const dragStartRef = useRef<{x: number, y: number} | null>(null);
+  const isDraggingRef = useRef(false);
+
+  // Canvas Ref
+  const canvasRef = useRef<CanvasHandle>(null);
+
+  // Responsive Initialization
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setIsLibraryOpen(false); // Default closed on mobile
+      } else {
+        setIsLibraryOpen(true); // Default open on desktop
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [canvasResetKey, setCanvasResetKey] = useState(0); 
 
+  const { 
+    addComponent, moveComponent, deleteComponent, rotateComponent, 
+    flipHorizontal, flipVertical, updateComponent, createConnection 
+  } = useComponentActions({
+    components, setComponents, connections, setConnections, saveToHistory,
+    selectedComponentId, setSelectedComponentId, setIsPropertiesOpen
+  });
+
+  // FAB Touch Handlers
+  const handleFabTouchStart = (e: React.TouchEvent) => {
+    isDraggingRef.current = false;
+    const touch = e.touches[0];
+    dragStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleFabTouchMove = (e: React.TouchEvent) => {
+    if (!dragStartRef.current) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragStartRef.current.x;
+    const dy = touch.clientY - dragStartRef.current.y;
+    
+    // Threshold to prevent accidental drags when clicking
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        isDraggingRef.current = true;
+        setFabPos({ 
+            x: touch.clientX - 28, // Center offset (56px / 2)
+            y: touch.clientY - 28 
+        });
+    }
+  };
+
+  // Wrapper for adding components on mobile to close the drawer
+  const handleAddComponent = (type: any) => {
+    addComponent(type);
+    if (isMobile) setIsLibraryOpen(false);
+  };
+
+  // Undo/Redo Handlers
+  const handleUndo = () => {
+    const state = undo();
+    if (state) {
+      setComponents(state.components);
+      setConnections(state.connections);
+    }
+  };
+
+  const handleRedo = () => {
+    const state = redo();
+    if (state) {
+      setComponents(state.components);
+      setConnections(state.connections);
+    }
+  };
+
+  // --- AI Interaction ---
   const handleSendMessage = async (text: string) => {
     const userMsg: ChatMessage = { id: uuidv4(), role: 'user', text };
     const updatedHistory = [...messages, userMsg];
@@ -45,6 +151,7 @@ const App: React.FC = () => {
         setComponents(response.components);
         setConnections(response.connections || []);
         setArduinoCode(response.arduinoCode || '');
+        saveToHistory(response.components, response.connections || []);
       }
 
       const aiMsg: ChatMessage = {
@@ -68,137 +175,114 @@ const App: React.FC = () => {
     }
   };
 
-  const toggleSimulation = async () => {
-    if (isSimulating) {
-      runnerRef.current?.stop();
-      runnerRef.current = null;
-      setIsSimulating(false);
-      setSimulationPinStates({});
-      return;
-    }
-
-    if (!arduinoCode) {
-      alert("No code to simulate! Ask Ziro to generate a circuit first.");
-      return;
-    }
-
-    setIsCompiling(true);
-    try {
-      const hex = await compileArduinoCode(arduinoCode);
-      const runner = new AVRRunner(hex, (update: SimulationUpdate) => {
-        setSimulationPinStates(update.pinStates);
-      });
-      runnerRef.current = runner;
-      runner.execute();
-      setIsSimulating(true);
-    } catch (err: any) {
-      console.error("Simulation Start Error:", err);
-      alert("Simulation Error: " + err.message);
-    } finally {
-      setIsCompiling(false);
-    }
-  };
-
   const handleClear = () => {
-    if (isSimulating) {
-      runnerRef.current?.stop();
-      runnerRef.current = null;
-      setIsSimulating(false);
-    }
+    stopSimulation();
     setComponents([]);
     setConnections([]);
     setArduinoCode('');
-    setSimulationPinStates({});
+    setSelectedComponentId(null);
     setMessages([{
       id: uuidv4(),
       role: 'assistant',
       text: "Canvas cleared! I'm ready for a fresh project. What's the new plan?"
     }]);
+    resetHistory();
   };
 
-  const handleAddComponent = (type: ComponentType) => {
-    // Offset new components so they don't stack exactly on top of each other
-    const offset = components.length * 20;
-    const newComp: CircuitComponent = {
-        id: `comp-${uuidv4().slice(0, 8)}`,
-        type,
-        x: 300 + offset,
-        y: 200 + offset,
-        rotation: 0,
-        attributes: {},
-        label: type.replace('wokwi-', '')
-    };
-    setComponents(prev => [...prev, newComp]);
+  const handleShare = () => {
+    const data = JSON.stringify({ components, connections, code: arduinoCode });
+    console.log("Sharing Data:", data);
+    alert("Shareable link copied to clipboard! (Simulation)");
   };
 
-  const handleComponentMove = (id: string, x: number, y: number) => {
-    setComponents(prev => prev.map(comp => 
-      comp.id === id ? { ...comp, x, y } : comp
-    ));
-  };
-
-  const handleConnectionCreated = (sourceId: string, sourcePin: string, targetId: string, targetPin: string) => {
-     const newConnection: WokwiConnection = [`${sourceId}:${sourcePin}`, `${targetId}:${targetPin}`, "green"];
-     setConnections(prev => {
-        const exists = prev.some(c => 
-          (c[0] === newConnection[0] && c[1] === newConnection[1]) ||
-          (c[0] === newConnection[1] && c[1] === newConnection[0])
-        );
-        if (exists) return prev;
-        return [...prev, newConnection];
-     });
-  };
-
-  const handleResetZoom = () => {
-      setCanvasResetKey(prev => prev + 1);
-  };
-
-  // Clean up simulation on unmount
-  useEffect(() => {
-    return () => {
-      if (runnerRef.current) {
-        runnerRef.current.stop();
-      }
-    };
-  }, []);
+  const selectedComponent = components.find(c => c.id === selectedComponentId);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0f1115] text-white font-sans">
-      <ComponentLibrary onAddComponent={handleAddComponent} />
+    <div className="flex h-screen w-screen overflow-hidden bg-[#0f1115] text-white font-sans relative">
+      
+      {/* --- MOBILE: Library Drawer (90% from Left) --- */}
+      <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isLibraryOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>
+         {/* Backdrop */}
+         <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsLibraryOpen(false)}
+         />
+         {/* Drawer Panel */}
+         <div className={`absolute left-0 top-0 bottom-0 w-[90%] bg-[#13161c] shadow-2xl transition-transform duration-300 ease-in-out ${isLibraryOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <ComponentLibrary onAddComponent={handleAddComponent} />
+            {/* Close handle for accessibility */}
+            <div className="absolute top-1/2 -right-6 w-6 h-12 bg-[#13161c] rounded-r-lg flex items-center justify-center text-gray-500" onClick={() => setIsLibraryOpen(false)}>
+               ‹
+            </div>
+         </div>
+      </div>
 
-      <div className="flex-1 flex flex-col bg-[#0b0d11] overflow-hidden relative">
+      {/* --- DESKTOP: Library Sidebar --- */}
+      <div 
+        className={`hidden md:block flex-shrink-0 h-full border-r border-[#1e2229] bg-[#13161c] transition-[width,opacity] duration-300 ease-in-out overflow-hidden ${
+          isLibraryOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 border-none'
+        }`}
+      >
+        <ComponentLibrary onAddComponent={addComponent} />
+      </div>
+
+      {/* --- CENTER: Main Application Area --- */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#0b0d11] relative z-10">
         <UpperToolbar 
-          onViewCode={() => setIsCodeEditorOpen(true)} 
+          onViewCode={() => setIsCodeEditorOpen(prev => !prev)} 
           onSimulate={toggleSimulation}
+          onResetSimulation={resetSimulation}
+          onViewSerialMonitor={() => setIsSerialMonitorOpen(prev => !prev)}
+          onViewSchematic={() => alert("Schematic View: Feature Coming Soon")}
+          onViewBOM={() => setIsBOMOpen(prev => !prev)} 
+          onShare={handleShare}
           isSimulating={isSimulating}
           isCompiling={isCompiling}
+          toggleLibrary={() => setIsLibraryOpen(!isLibraryOpen)}
+          isLibraryOpen={isLibraryOpen}
         />
         
         <div className="flex-1 relative bg-grid overflow-hidden">
           <Canvas 
+            ref={canvasRef}
             key={canvasResetKey}
             components={components} 
             connections={connections} 
             isLoading={isProcessing} 
-            onComponentMove={handleComponentMove}
-            onConnectionCreated={handleConnectionCreated}
+            selectedComponentId={selectedComponentId}
+            onSelectComponent={(id) => { setSelectedComponentId(id); if(!id) setIsPropertiesOpen(false); }}
+            onComponentMove={moveComponent}
+            onDragEnd={() => saveToHistory(components, connections)}
+            onConnectionCreated={createConnection}
             simulationPinStates={isSimulating ? simulationPinStates : undefined}
           />
 
-          {isCodeEditorOpen && (
-            <CodeEditor 
-              code={arduinoCode} 
-              components={components}
-              onCodeChange={(newCode) => setArduinoCode(newCode)}
-              onClose={() => setIsCodeEditorOpen(false)} 
+          {isPropertiesOpen && selectedComponent && (
+            <PropertiesPanel 
+              component={selectedComponent}
+              onUpdate={updateComponent}
+              onClose={() => setIsPropertiesOpen(false)}
             />
           )}
         </div>
         
-        <LowerToolbar onClear={handleClear} onResetZoom={handleResetZoom} />
+        <LowerToolbar 
+          selectedComponentId={selectedComponentId}
+          onDelete={deleteComponent}
+          onRotate={rotateComponent}
+          onFlipHorizontal={flipHorizontal}
+          onFlipVertical={flipVertical}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onProperties={() => setIsPropertiesOpen(!isPropertiesOpen)}
+          onFitToScreen={() => canvasRef.current?.zoomToFit()}
+          canUndo={historyIndex > 0}
+          canRedo={historyIndex < historyLength - 1}
+        />
       </div>
 
-      <div className="w-96 flex-shrink-0 z-30 h-full">
+      {/* --- DESKTOP: Chat Sidebar --- */}
+      <div className="hidden md:block w-96 flex-shrink-0 z-30 h-full border-l border-[#1e2229] shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
         <ChatInterface 
           messages={messages} 
           onSendMessage={handleSendMessage} 
@@ -206,6 +290,73 @@ const App: React.FC = () => {
           isProcessing={isProcessing}
         />
       </div>
+
+      {/* --- MOBILE: Chat Drawer (90% from Right) --- */}
+      <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isMobileChatOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>
+         {/* Backdrop (10% Click Area) */}
+         <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsMobileChatOpen(false)}
+         />
+         {/* Drawer Panel */}
+         <div className={`absolute right-0 top-0 bottom-0 w-[90%] bg-[#0f1115] border-l border-[#1e2229] shadow-2xl transition-transform duration-300 ease-in-out ${isMobileChatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <ChatInterface 
+              messages={messages} 
+              onSendMessage={handleSendMessage} 
+              onClear={handleClear}
+              isProcessing={isProcessing}
+            />
+         </div>
+      </div>
+
+      {/* --- MOBILE: Draggable Chat FAB --- */}
+      <button
+        className={`md:hidden fixed z-40 w-14 h-14 bg-cyan-600 rounded-full shadow-[0_4px_20px_rgba(8,145,178,0.5)] flex items-center justify-center text-white active:scale-95 transition-transform ${isMobileChatOpen ? 'hidden' : 'block'}`}
+        style={{
+          left: fabPos ? fabPos.x : undefined,
+          top: fabPos ? fabPos.y : undefined,
+          right: fabPos ? undefined : '20px',
+          bottom: fabPos ? undefined : '100px', // Position above the lower toolbar
+          touchAction: 'none' // Prevent scrolling while dragging
+        }}
+        onTouchStart={handleFabTouchStart}
+        onTouchMove={handleFabTouchMove}
+        onClick={() => { if (!isDraggingRef.current) setIsMobileChatOpen(true); }}
+      >
+        <MessageSquare className="w-7 h-7 fill-white/20" />
+        {/* Notification dot if processing */}
+        {isProcessing && (
+           <span className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full animate-bounce" />
+        )}
+      </button>
+
+      {/* --- GLOBAL OVERLAYS --- */}
+      
+      {isCodeEditorOpen && (
+        <CodeEditor 
+          code={arduinoCode} 
+          components={components}
+          onCodeChange={(newCode) => setArduinoCode(newCode)}
+          onClose={() => setIsCodeEditorOpen(false)} 
+        />
+      )}
+
+      {isBOMOpen && (
+         <BillOfMaterials 
+           components={components} 
+           onClose={() => setIsBOMOpen(false)} 
+         />
+      )}
+      
+      <SerialMonitor
+        isOpen={isSerialMonitorOpen}
+        onClose={() => setIsSerialMonitorOpen(false)}
+        output={serialOutput}
+        onSend={sendSerialInput}
+        onClear={clearSerialOutput}
+        isSimulating={isSimulating}
+      />
+
     </div>
   );
 };

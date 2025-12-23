@@ -26,9 +26,17 @@ You are a proactive, expert Electronics Engineer specializing in DIRECT INCREMEN
 - Include helpful comments in the code.
 
 **TECHNICAL RULES:**
-- Components: Use 'wokwi-arduino-uno', 'wokwi-led', 'wokwi-resistor', 'wokwi-pushbutton', 'wokwi-potentiometer', 'wokwi-servo', 'wokwi-buzzer', 'wokwi-lcd1602', 'wokwi-7segment', 'wokwi-dht22', 'wokwi-hc-sr04'.
-- Connections: ["sourceID:pin", "targetID:pin", "color"].
-- Output: Valid JSON. 
+- **Available Components:** 
+  - Microcontrollers: 'wokwi-arduino-uno', 'wokwi-arduino-nano', 'wokwi-arduino-mega'.
+  - Inputs: 'wokwi-pushbutton', 'wokwi-slide-switch', 'wokwi-potentiometer', 'wokwi-slide-potentiometer', 'wokwi-membrane-keypad', 'wokwi-rotary-dialer', 'wokwi-analog-joystick', 'wokwi-ky-040' (Rotary Encoder), 'wokwi-tilt-switch'.
+  - Sensors: 'wokwi-dht22', 'wokwi-hc-sr04', 'wokwi-pir-motion-sensor', 'wokwi-photoresistor-sensor', 'wokwi-ntc-temperature-sensor', 'wokwi-gas-sensor', 'wokwi-ds1307' (RTC), 'wokwi-mpu6050' (Accel/Gyro), 'wokwi-flame-sensor', 'wokwi-heart-beat-sensor', 'wokwi-big-sound-sensor', 'wokwi-small-sound-sensor'.
+  - Outputs: 'wokwi-led', 'wokwi-7segment', 'wokwi-led-ring', 'wokwi-neopixel', 'wokwi-neopixel-matrix', 'wokwi-buzzer', 'wokwi-servo'.
+  - Displays: 'wokwi-lcd1602', 'wokwi-lcd2004', 'wokwi-ssd1306' (OLED).
+  - Comms: 'wokwi-ir-receiver', 'wokwi-ir-remote'.
+  - Basic: 'wokwi-resistor'.
+
+- **Connection Format:** ["sourceID:pin", "targetID:pin", "color"].
+- **Output:** Valid JSON. 
 `;
 
 /**
@@ -111,6 +119,7 @@ Connections: ${JSON.stringify(currentConnections)}
     const logicData = JSON.parse(text) as DesignResponse;
 
     if (logicData.components && logicData.components.length > 0) {
+      // Use the new deterministic placement engine
       const placedComponents = await optimizePlacement(
         logicData.components, 
         logicData.connections, 

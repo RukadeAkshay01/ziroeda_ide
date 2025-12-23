@@ -9,26 +9,32 @@ import {
   avrInstruction, 
   AVRTimer, 
   AVRIOPort, 
+  AVRUSART,
   portBConfig, 
   portCConfig, 
   portDConfig,
   timer0Config,
   timer1Config,
-  timer2Config
+  timer2Config,
+  usart0Config
 } from 'avr8js';
 
 export interface SimulationUpdate {
   pinStates: Record<string, number>; // Mapping of Arduino Pin -> Value (0 or 1)
+  serialOutput: string; // Buffer of text printed to Serial during this frame
 }
 
 export class AVRRunner {
   readonly cpu: any;
   readonly timers: AVRTimer[];
+  readonly usart: AVRUSART;
   readonly portB: any;
   readonly portC: any;
   readonly portD: any;
+  
   private animationFrame: number | null = null;
   private onUpdate: (update: SimulationUpdate) => void;
+  private serialBuffer: string = "";
 
   constructor(hex: string, onUpdate: (update: SimulationUpdate) => void) {
     this.onUpdate = onUpdate;
@@ -38,13 +44,21 @@ export class AVRRunner {
     this.loadHex(hex, program);
 
     this.cpu = new CPU(program);
-    // Fixed: AVRTimer expects a single timer configuration per instance. 
-    // We instantiate separate timers for TC0, TC1, and TC2 using standard avr8js configurations.
+    
+    // Instantiate timers
     this.timers = [
       new AVRTimer(this.cpu, timer0Config),
       new AVRTimer(this.cpu, timer1Config),
       new AVRTimer(this.cpu, timer2Config),
     ];
+
+    // Instantiate USART (Serial) - assuming 16MHz clock
+    this.usart = new AVRUSART(this.cpu, usart0Config, 16e6);
+    
+    // Hook into Serial output
+    this.usart.onByteTransmit = (value) => {
+      this.serialBuffer += String.fromCharCode(value);
+    };
 
     this.portB = new AVRIOPort(this.cpu, portBConfig);
     this.portC = new AVRIOPort(this.cpu, portCConfig);
@@ -67,26 +81,37 @@ export class AVRRunner {
     }
   }
 
+  // Send data from the UI to the Arduino (RX)
+  serialWrite(data: string) {
+     for (let i = 0; i < data.length; i++) {
+       this.usart.writeByte(data.charCodeAt(i));
+     }
+  }
+
   execute() {
-    // Run 100,000 instructions per frame (~16MHz / 60fps)
-    for (let i = 0; i < 100000; i++) {
+    // Run ~250,000 instructions per frame (~15MHz / 60fps)
+    for (let i = 0; i < 250000; i++) {
       avrInstruction(this.cpu);
-      // Fixed: Tick all hardware timers during the CPU execution cycle to handle delays and PWM.
       for (const timer of this.timers) {
         timer.tick();
       }
     }
 
     // Capture Pin States
-    // Port D: Pins 0-7
-    // Port B: Pins 8-13
-    // Port C: Pins A0-A5 (14-19)
     const pinStates: Record<string, number> = {};
     for (let i = 0; i < 8; i++) pinStates[i.toString()] = (this.portD.pinState(i) ? 1 : 0);
     for (let i = 0; i < 6; i++) pinStates[(i + 8).toString()] = (this.portB.pinState(i) ? 1 : 0);
     for (let i = 0; i < 6; i++) pinStates[(i + 14).toString()] = (this.portC.pinState(i) ? 1 : 0);
 
-    this.onUpdate({ pinStates });
+    // Send update to UI
+    this.onUpdate({ 
+      pinStates, 
+      serialOutput: this.serialBuffer 
+    });
+    
+    // Clear buffer for next frame
+    this.serialBuffer = "";
+
     this.animationFrame = requestAnimationFrame(() => this.execute());
   }
 

@@ -1,10 +1,15 @@
+
 /**
  * @file circuitUtils.ts
- * @description Mathematical utilities for coordinate transformations, pin detection, and Manhattan routing.
+ * @description Utilities for pin detection and Manhattan routing logic.
  */
 
 import { CircuitComponent, WokwiConnection, Point } from '../types';
 import { getComponentSpec, getComponentDimensions } from './static-component-data';
+import { rotateVector, getManhattanPoints } from './mathUtils';
+
+// Re-export for consumers
+export { pointsToSvgPath } from './mathUtils';
 
 const STUB_BASE = 20;           // Base length for wire "stubs" emerging from pins
 const STUB_STEP = 12;           // Extra spacing added to parallel wires to create a bus effect
@@ -21,22 +26,70 @@ export interface ComponentLayoutData {
 
 export type LayoutDataMap = Map<string, ComponentLayoutData>;
 
+// --- ALIAS DEFINITIONS ---
+const PIN_ALIASES: Record<string, Record<string, string>> = {
+  'wokwi-pushbutton': { 
+    '1': '1.l', '2': '2.l', '3': '1.r', '4': '2.r',
+    'IN': '1.l', 'OUT': '2.l',
+    'L': '1.l', 'R': '1.r',
+    'LEFT': '1.l', 'RIGHT': '1.r'
+  },
+  'wokwi-potentiometer': {
+    'WIPER': 'SIG', 'SIGNAL': 'SIG', 'OUTPUT': 'SIG', 'OUT': 'SIG',
+    'POS': 'VCC', 'NEG': 'GND',
+    '+': 'VCC', '-': 'GND', 'IN': 'VCC'
+  },
+  'wokwi-slide-switch': {
+    'COM': '2', 'COMMON': '2', 'MIDDLE': '2',
+    'L': '1', 'R': '3', 'LEFT': '1', 'RIGHT': '3'
+  },
+  'wokwi-relay-module': {
+     'S': 'IN', 'SIGNAL': 'IN', 'SIG': 'IN'
+  },
+  'wokwi-servo': {
+     'SIGNAL': 'PWM', 'SIG': 'PWM', 'PULSE': 'PWM', 'DATA': 'PWM'
+  },
+  'wokwi-ky-040': {
+      'S1': 'CLK', 'S2': 'DT', 'KEY': 'SW'
+  },
+  'wokwi-led': {
+      'ANODE': 'A', 'CATHODE': 'C', 'POS': 'A', 'NEG': 'C'
+  },
+  'wokwi-buzzer': {
+      'POS': '1', 'NEG': '2', '+': '1', '-': '2'
+  }
+};
+
 /**
- * Rotates a 2D vector by a given angle in degrees.
+ * Normalizes a pin name using known aliases and standard transformations.
  */
-function rotateVector(v: Vector, angleDegrees: number): Vector {
-  const rad = (angleDegrees * Math.PI) / 180;
-  const cos = Math.cos(rad);
-  const sin = Math.sin(rad);
-  return {
-    x: Math.round(v.x * cos - v.y * sin),
-    y: Math.round(v.x * sin + v.y * cos)
-  };
+function normalizePinName(componentType: string, pinName: string): string {
+    if (!pinName) return '';
+    let name = pinName.toUpperCase().trim();
+    
+    // 1. Remove common prefixes for Arduino-like pins
+    if (componentType.includes('arduino')) {
+        name = name.replace(/^D(\d+)$/, '$1'); // D13 -> 13
+        name = name.replace(/^GPIO(\d+)$/, '$1');
+    }
+
+    // 2. Check Aliases
+    const typeAliases = PIN_ALIASES[componentType];
+    if (typeAliases) {
+        // Direct match
+        if (typeAliases[name]) return typeAliases[name];
+        
+        // Case-insensitive / Fuzzy check if not found directly
+        const foundKey = Object.keys(typeAliases).find(k => k.toUpperCase() === name);
+        if (foundKey) return typeAliases[foundKey];
+    }
+
+    return name;
 }
 
 /**
  * Determines the ideal exit direction for a wire leaving a specific pin.
- * For example, Arduino top pins exit UP, while bottom pins exit DOWN.
+ * Uses geometric proximity to the component edges.
  */
 export function getPinExitVector(
   component: CircuitComponent,
@@ -44,36 +97,67 @@ export function getPinExitVector(
   layoutData: LayoutDataMap
 ): Vector {
   const type = component.type;
-  const rotation = component.rotation || 0;
+  const normalizedPinName = normalizePinName(type, pinName);
   
-  let localVector: Vector = { x: 0, y: 1 };
+  // 1. Try to find precise pin coordinates and component dimensions
+  let pinX: number | undefined;
+  let pinY: number | undefined;
+  let compWidth: number = 0;
+  let compHeight: number = 0;
 
-  if (type.includes('arduino')) {
-    const dims = getComponentDimensions(type);
-    const spec = getComponentSpec(type);
-    if (spec) {
-       const pinDef = spec.pins.find(p => p.name === pinName);
-       if (pinDef) {
-         if (pinDef.y < dims.height / 2) localVector = { x: 0, y: -1 };
-         else localVector = { x: 0, y: 1 };
-       }
+  // Check dynamic layout data first (real rendered size/positions)
+  const dynamic = layoutData.get(component.id);
+  if (dynamic) {
+    const p = dynamic.pins.find(dp => dp.name === pinName || dp.name.toUpperCase() === normalizedPinName.toUpperCase());
+    if (p) {
+       pinX = p.x;
+       pinY = p.y;
+       compWidth = dynamic.width;
+       compHeight = dynamic.height;
     }
-  } 
-  else if (type.includes('resistor')) {
-    if (pinName === '1') localVector = { x: -1, y: 0 };
-    else if (pinName === '2') localVector = { x: 1, y: 0 };
-  }
-  else if (type.includes('pushbutton')) {
-    if (pinName.includes('1.')) localVector = { x: 0, y: -1 };
-    else localVector = { x: 0, y: 1 };
   }
 
-  return rotateVector(localVector, rotation);
+  // Fallback to static data if not found dynamically
+  if (pinX === undefined || pinY === undefined) {
+    const spec = getComponentSpec(type);
+    const dims = getComponentDimensions(type);
+    compWidth = dims.width;
+    compHeight = dims.height;
+    
+    // Attempt to match pin name (exact or normalized)
+    const p = spec?.pins.find(sp => sp.name === pinName || sp.name.toUpperCase() === normalizedPinName.toUpperCase());
+    if (p) {
+        pinX = p.x;
+        pinY = p.y;
+    }
+  }
+
+  // If we found the pin, determine exit vector geometrically
+  if (pinX !== undefined && pinY !== undefined) {
+      // Calculate distance to each edge
+      const distL = pinX;
+      const distR = compWidth - pinX;
+      const distT = pinY;
+      const distB = compHeight - pinY;
+      
+      const min = Math.min(distL, distR, distT, distB);
+      
+      let localVector = { x: 0, y: 1 }; // Default down
+
+      if (min === distT) localVector = { x: 0, y: -1 };      // Top Edge -> Up
+      else if (min === distB) localVector = { x: 0, y: 1 };  // Bottom Edge -> Down
+      else if (min === distL) localVector = { x: -1, y: 0 }; // Left Edge -> Left
+      else if (min === distR) localVector = { x: 1, y: 0 };  // Right Edge -> Right
+      
+      return rotateVector(localVector, component.rotation || 0);
+  }
+
+  // Absolute fallback for completely unknown pins: Default Down
+  return rotateVector({ x: 0, y: 1 }, component.rotation || 0);
 }
 
 /**
  * Calculates absolute world coordinates for all pins on a component.
- * Accounts for component position, internal pin offsets, and rotation.
  */
 export function getAllPinPositions(
   part: CircuitComponent,
@@ -124,13 +208,33 @@ export function getPinAbsolutePosition(
     layoutData: LayoutDataMap
 ): Point {
   const allPins = getAllPinPositions(part, layoutData);
-  const normalize = (n: string) => n.replace(/^D(\d+)$/, '$1').toUpperCase();
-  const target = normalize(pinName);
+  
+  // Normalize everything to Upper Case for robust comparison
+  // NOTE: normalizePinName might return mixed case from ALIAS map, so we force upper here.
+  const target = normalizePinName(part.type, pinName).toUpperCase();
+  const rawTarget = pinName.toUpperCase();
 
-  let pin = allPins.find(p => normalize(p.name) === target);
-  if (!pin) pin = allPins.find(p => normalize(p.name).includes(target) || target.includes(normalize(p.name)));
+  // 1. Try exact match on normalized name (Checking p.name vs target)
+  let pin = allPins.find(p => p.name.toUpperCase() === target);
+
+  // 2. Try exact match on raw name
+  if (!pin) {
+      pin = allPins.find(p => p.name.toUpperCase() === rawTarget);
+  }
+
+  // 3. Try fuzzy containment (helpful for things like "GPIO 2" vs "2")
+  if (!pin) {
+      pin = allPins.find(p => {
+          const pName = p.name.toUpperCase();
+          return pName === target || 
+                 pName.includes(target) || target.includes(pName) ||
+                 pName === rawTarget ||
+                 pName.includes(rawTarget) || rawTarget.includes(pName);
+      });
+  }
 
   if (!pin) {
+      // FALLBACK: Return the exact center of the component
       const dims = getComponentDimensions(part.type);
       return { x: part.x + dims.width / 2, y: part.y + dims.height / 2 };
   }
@@ -138,7 +242,7 @@ export function getPinAbsolutePosition(
 }
 
 /**
- * Maps pin context (e.g., 'GND', '5V') to a standardized wire color hex.
+ * Maps pin context to a standardized wire color hex.
  */
 export function getWireColor(connection: string[]): string {
   const explicitColor = connection[2] ? connection[2].toLowerCase() : '';
@@ -193,14 +297,6 @@ function computeDynamicStubs(
 }
 
 /**
- * Calculates the Manhattan (orthogonal) path between two points.
- */
-function getManhattanPoints(start: Point, end: Point): Point[] {
-    const midX = (start.x + end.x) / 2;
-    return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
-}
-
-/**
  * Main engine for initial wire routing. Calculates paths for all connections.
  */
 export function calculateDefaultRoutes(
@@ -237,28 +333,7 @@ export function calculateDefaultRoutes(
 }
 
 /**
- * Converts a series of points into an SVG path string with rounded corners.
- */
-export function pointsToSvgPath(points: Point[]): string {
-    if (points.length < 2) return "";
-    const R = 12; 
-    let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-
-    for (let i = 1; i < points.length - 1; i++) {
-        const p = points[i-1], c = points[i], n = points[i+1];
-        const dx1 = c.x - p.x, dy1 = c.y - p.y, len1 = Math.sqrt(dx1**2 + dy1**2);
-        const dx2 = n.x - c.x, dy2 = n.y - c.y, len2 = Math.sqrt(dx2**2 + dy2**2);
-        const r = Math.min(R, len1 / 2, len2 / 2);
-        if (r < 2) { d += ` L ${c.x.toFixed(1)} ${c.y.toFixed(1)}`; continue; }
-        d += ` L ${(c.x - (dx1 / len1) * r).toFixed(1)} ${(c.y - (dy1 / len1) * r).toFixed(1)}`;
-        d += ` Q ${c.x.toFixed(1)} ${c.y.toFixed(1)} ${(c.x + (dx2 / len2) * r).toFixed(1)} ${(c.y + (dy2 / len2) * r).toFixed(1)}`;
-    }
-    d += ` L ${points[points.length-1].x.toFixed(1)} ${points[points.length-1].y.toFixed(1)}`;
-    return d;
-}
-
-/**
- * Adjusts a wire route in response to user dragging a segment, maintaining orthogonality.
+ * Adjusts a wire route in response to user dragging a segment.
  */
 export function updateRouteWithDrag(
     originalPoints: Point[],
