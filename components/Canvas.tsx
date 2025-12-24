@@ -5,6 +5,8 @@ import { useCanvasTransform } from '../hooks/useCanvasTransform';
 import { useWireRouting } from '../hooks/useWireRouting';
 import { useComponentMeasurement } from '../hooks/useComponentMeasurement';
 import { useCanvasInteractions } from '../hooks/useCanvasInteractions';
+import { COMPONENT_MAPPINGS } from '../simulator/core/ComponentMappings';
+import { CircuitSimulator } from '../simulator/core/Simulator';
 
 import WireOverlay from './canvas/WireOverlay';
 import PinOverlay from './canvas/PinOverlay';
@@ -24,15 +26,16 @@ interface CanvasProps {
 
 export interface CanvasHandle {
   zoomToFit: () => void;
+  updateVisuals: (simulator: CircuitSimulator) => void;
 }
 
-const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ 
-  components, 
-  connections, 
-  isLoading, 
+const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
+  components,
+  connections,
+  isLoading,
   selectedComponentId,
   onSelectComponent,
-  onComponentMove, 
+  onComponentMove,
   onDragEnd,
   onConnectionCreated,
   simulationPinStates
@@ -45,9 +48,20 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
   const { layoutData } = useComponentMeasurement(components, componentRefs);
   const { wireRoutes, setWireRoutes } = useWireRouting(components, connections, layoutData);
 
-  // Expose zoomToFit to parent via ref
+  // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
-    zoomToFit: () => zoomToFit(components)
+    zoomToFit: () => zoomToFit(components),
+    updateVisuals: (simulator: CircuitSimulator) => {
+      components.forEach(comp => {
+        const mapping = COMPONENT_MAPPINGS[comp.type];
+        if (mapping) {
+          const el = componentRefs.current.get(comp.id);
+          if (el) {
+            mapping.update(comp, el, simulator);
+          }
+        }
+      });
+    }
   }));
 
   // 2. Interaction Logic Hook
@@ -72,42 +86,22 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
     onConnectionCreated
   });
 
-  // 3. Propagate Simulation States
+  // 3. Propagate Simulation States (Legacy - now handled by updateVisuals)
   useEffect(() => {
-    if (!simulationPinStates) return;
-    connections.forEach(([src, tgt]) => {
-      const [srcId, srcPin] = src.split(':');
-      const [tgtId, tgtPin] = tgt.split(':');
-      const unoId = components.find(c => c.id === srcId && c.type === 'wokwi-arduino-uno') ? srcId : 
-                    components.find(c => c.id === tgtId && c.type === 'wokwi-arduino-uno') ? tgtId : null;
-      
-      if (unoId) {
-        const pin = unoId === srcId ? srcPin : tgtPin;
-        const targetId = unoId === srcId ? tgtId : srcId;
-        const pinValue = simulationPinStates[pin] ?? 0;
-        const targetEl = componentRefs.current.get(targetId);
-        
-        if (targetEl) {
-          (targetEl as any).value = pinValue;
-          if (targetEl.tagName.toLowerCase() === 'wokwi-led') {
-            (targetEl as any).value = pinValue === 1;
-          }
-        }
-      }
-    });
+    // This is now handled by the onTick callback calling updateVisuals
   }, [simulationPinStates, connections, components]);
 
   const setComponentRef = (id: string) => (el: HTMLElement | null) => {
-      if (el) componentRefs.current.set(id, el);
-      else componentRefs.current.delete(id);
+    if (el) componentRefs.current.set(id, el);
+    else componentRefs.current.delete(id);
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className={`relative w-full h-full bg-slate-900 overflow-hidden shadow-inner ${dragMode === 'PAN' ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`relative w-full h-full bg-dark-800 overflow-hidden shadow-inner ${dragMode === 'PAN' ? 'cursor-grabbing' : 'cursor-grab'}`}
       style={{
-        backgroundImage: 'radial-gradient(circle, rgba(255, 255, 255, 0.15) 1.5px, transparent 1.5px)',
+        backgroundImage: 'radial-gradient(circle, rgba(255, 255, 255, 0.3) 1.5px, transparent 1.5px)',
         backgroundSize: `${24 * transform.scale}px ${24 * transform.scale}px`,
         backgroundPosition: `${transform.x}px ${transform.y}px`
       }}
@@ -121,21 +115,21 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
       {isLoading && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
           <div className="flex flex-col items-center gap-4">
-             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"></div>
-             <p className="text-cyan-400 font-mono animate-pulse">Routing Circuits...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-400"></div>
+            <p className="text-brand-400 font-mono animate-pulse">Routing Circuits...</p>
           </div>
         </div>
       )}
 
-      <div 
+      <div
         className="absolute inset-0 origin-top-left will-change-transform"
         style={{
           transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-          transition: dragMode !== 'PAN' ? 'transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1)' : 'none' 
+          transition: dragMode !== 'PAN' ? 'transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1)' : 'none'
         }}
       >
         {/* Layer 1 (Bottom): Base Wires - Behind components to reduce clutter */}
-        <WireOverlay 
+        <WireOverlay
           layer="bottom"
           connections={connections}
           wireRoutes={wireRoutes}
@@ -147,7 +141,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
         />
 
         {/* Layer 2 (Middle): Components */}
-        <ComponentLayer 
+        <ComponentLayer
           components={components}
           layoutData={layoutData}
           draggedComponentId={draggedComponentId}
@@ -157,7 +151,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
         />
 
         {/* Layer 3 (Top): Interaction Wires - Handles & Highlights on top of components */}
-        <WireOverlay 
+        <WireOverlay
           layer="top"
           connections={connections}
           wireRoutes={wireRoutes}
@@ -169,7 +163,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
         />
 
         {/* Layer 4 (Overlay): Pin Interactions */}
-        <PinOverlay 
+        <PinOverlay
           components={components}
           layoutData={layoutData}
           drawingState={drawingState}

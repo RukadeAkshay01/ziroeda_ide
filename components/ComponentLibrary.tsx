@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
-import { 
-  Search, Cpu, Radio, Sliders, ToggleLeft, 
-  Gamepad2, Thermometer, Eye, Activity, Monitor, Smartphone, 
-  Keyboard, MousePointerClick, Volume2, 
+import {
+  Search, Cpu, Radio, Sliders, ToggleLeft,
+  Gamepad2, Thermometer, Eye, Activity, Monitor, Smartphone,
+  Keyboard, MousePointerClick, Volume2,
   Disc, Zap
 } from 'lucide-react';
 import { ComponentType } from '../types';
@@ -53,28 +53,28 @@ const CATEGORIES: Category[] = [
     ]
   },
   {
-      title: 'OUTPUTS',
-      items: [
-          { id: 'wokwi-led', name: 'LED', icon: <Radio className="w-4 h-4" /> },
-          { id: 'wokwi-neopixel', name: 'NeoPixel', icon: <Radio className="w-4 h-4 text-purple-500" /> },
-          { id: 'wokwi-led-ring', name: 'LED Ring', icon: <Disc className="w-4 h-4 text-red-500" /> },
-          { id: 'wokwi-7segment', name: '7-Segment', icon: <Monitor className="w-4 h-4" /> },
-          { id: 'wokwi-buzzer', name: 'Buzzer', icon: <Volume2 className="w-4 h-4" /> },
-          { id: 'wokwi-servo', name: 'Servo Motor', icon: <Gamepad2 className="w-4 h-4" /> },
-      ]
+    title: 'OUTPUTS',
+    items: [
+      { id: 'wokwi-led', name: 'LED', icon: <Radio className="w-4 h-4" /> },
+      { id: 'wokwi-neopixel', name: 'NeoPixel', icon: <Radio className="w-4 h-4 text-purple-500" /> },
+      { id: 'wokwi-led-ring', name: 'LED Ring', icon: <Disc className="w-4 h-4 text-red-500" /> },
+      { id: 'wokwi-7segment', name: '7-Segment', icon: <Monitor className="w-4 h-4" /> },
+      { id: 'wokwi-buzzer', name: 'Buzzer', icon: <Volume2 className="w-4 h-4" /> },
+      { id: 'wokwi-servo', name: 'Servo Motor', icon: <Gamepad2 className="w-4 h-4" /> },
+    ]
   },
   {
-      title: 'DISPLAYS',
-      items: [
-          { id: 'wokwi-lcd1602', name: 'LCD 16x2', icon: <Monitor className="w-4 h-4" /> },
-          { id: 'wokwi-ssd1306', name: 'OLED SSD1306', icon: <Smartphone className="w-4 h-4" /> },
-      ]
+    title: 'DISPLAYS',
+    items: [
+      { id: 'wokwi-lcd1602', name: 'LCD 16x2', icon: <Monitor className="w-4 h-4" /> },
+      { id: 'wokwi-ssd1306', name: 'OLED SSD1306', icon: <Smartphone className="w-4 h-4" /> },
+    ]
   },
   {
-      title: 'BASIC',
-      items: [
-          { id: 'wokwi-resistor', name: 'Resistor', icon: <Zap className="w-4 h-4 rotate-90" /> },
-      ]
+    title: 'BASIC',
+    items: [
+      { id: 'wokwi-resistor', name: 'Resistor', icon: <Zap className="w-4 h-4 rotate-90" /> },
+    ]
   }
 ];
 
@@ -87,18 +87,18 @@ const ComponentLibrary: React.FC<ComponentLibraryProps> = ({ onAddComponent }) =
   })).filter(cat => cat.items.length > 0);
 
   return (
-    <div className="w-64 h-full bg-[#13161c] flex flex-col">
+    <div className="w-64 h-full bg-dark-900 flex flex-col">
       {/* Search Header */}
-      <div className="p-4 space-y-4 border-b border-[#1e2229]">
-        <h2 className="text-xs font-bold text-[#4a5568] uppercase tracking-widest">Essentials</h2>
+      <div className="p-4 space-y-4 border-b border-dark-700">
+        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Essentials</h2>
         <div className="relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a5568] group-focus-within:text-cyan-400 transition-colors" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-brand-400 transition-colors" />
           <input
             type="text"
             placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#0b0d11] border border-[#2d3748] rounded-md py-1.5 pl-10 pr-3 text-sm text-[#cbd5e0] focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
+            className="w-full bg-dark-800 border border-dark-700 rounded-md py-1.5 pl-10 pr-3 text-sm text-gray-300 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 transition-all"
           />
         </div>
       </div>
@@ -107,7 +107,7 @@ const ComponentLibrary: React.FC<ComponentLibraryProps> = ({ onAddComponent }) =
       <div className="flex-1 overflow-y-auto px-2 space-y-6 pb-10 pt-4 scrollbar-hide">
         {filteredCategories.map((cat) => (
           <div key={cat.title} className="space-y-1">
-            <h3 className="px-3 text-[10px] font-bold text-[#4a5568] tracking-widest uppercase py-2">
+            <h3 className="px-3 text-[10px] font-bold text-gray-500 tracking-widest uppercase py-2">
               {cat.title}
             </h3>
             <div className="space-y-0.5">
@@ -115,9 +115,9 @@ const ComponentLibrary: React.FC<ComponentLibraryProps> = ({ onAddComponent }) =
                 <button
                   key={item.id}
                   onClick={() => onAddComponent(item.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-[#a0aec0] hover:text-white hover:bg-[#2d3748] group transition-all"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-dark-800 group transition-all"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-[#0b0d11] flex items-center justify-center text-[#4a5568] group-hover:text-cyan-400 border border-[#2d3748] group-hover:border-cyan-500/30 transition-all shadow-sm">
+                  <div className="w-8 h-8 rounded-lg bg-dark-800 flex items-center justify-center text-gray-500 group-hover:text-brand-400 border border-dark-700 group-hover:border-brand-500/30 transition-all shadow-sm">
                     {item.icon}
                   </div>
                   <span className="font-medium truncate">{item.name}</span>
@@ -127,7 +127,7 @@ const ComponentLibrary: React.FC<ComponentLibraryProps> = ({ onAddComponent }) =
           </div>
         ))}
         {filteredCategories.length === 0 && (
-          <div className="p-4 text-center text-xs text-[#4a5568]">
+          <div className="p-4 text-center text-xs text-gray-500">
             No components found.
           </div>
         )}

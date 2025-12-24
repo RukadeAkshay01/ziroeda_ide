@@ -1,143 +1,125 @@
 
 /**
  * @file simulationService.ts
- * @description Manages the avr8js simulation lifecycle and C++ compilation.
+ * @description Wrapper around the ported CircuitSimulator from ZiroEDA_final.
  */
 
-import { 
-  CPU, 
-  avrInstruction, 
-  AVRTimer, 
-  AVRIOPort, 
-  AVRUSART,
-  portBConfig, 
-  portCConfig, 
-  portDConfig,
-  timer0Config,
-  timer1Config,
-  timer2Config,
-  usart0Config
-} from 'avr8js';
+import { CircuitSimulator } from '../simulator/core/Simulator';
+import { CircuitComponent, WokwiConnection, CircuitDesign, Connection } from '../types';
 
 export interface SimulationUpdate {
-  pinStates: Record<string, number>; // Mapping of Arduino Pin -> Value (0 or 1)
-  serialOutput: string; // Buffer of text printed to Serial during this frame
+  pinStates: Record<string, number>;
+  serialOutput: string;
 }
 
-export class AVRRunner {
-  readonly cpu: any;
-  readonly timers: AVRTimer[];
-  readonly usart: AVRUSART;
-  readonly portB: any;
-  readonly portC: any;
-  readonly portD: any;
-  
+export class SimulationService {
+  private simulator: CircuitSimulator;
+  private isRunning: boolean = false;
   private animationFrame: number | null = null;
+  private lastTimestamp: number = 0;
   private onUpdate: (update: SimulationUpdate) => void;
-  private serialBuffer: string = "";
+  private onTick?: (simulator: CircuitSimulator) => void;
 
-  constructor(hex: string, onUpdate: (update: SimulationUpdate) => void) {
+  constructor(onUpdate: (update: SimulationUpdate) => void, onTick?: (simulator: CircuitSimulator) => void) {
+    this.simulator = new CircuitSimulator();
     this.onUpdate = onUpdate;
-    
-    // Parse HEX to program memory
-    const program = new Uint16Array(16384);
-    this.loadHex(hex, program);
+    this.onTick = onTick;
 
-    this.cpu = new CPU(program);
-    
-    // Instantiate timers
-    this.timers = [
-      new AVRTimer(this.cpu, timer0Config),
-      new AVRTimer(this.cpu, timer1Config),
-      new AVRTimer(this.cpu, timer2Config),
-    ];
+    // Hook into serial output
+    this.simulator.onSerialOutput = (char) => {
+      this.onUpdate({
+        pinStates: {}, // Pin states are handled in the update loop
+        serialOutput: char
+      });
+    };
+  }
 
-    // Instantiate USART (Serial) - assuming 16MHz clock
-    this.usart = new AVRUSART(this.cpu, usart0Config, 16e6);
-    
-    // Hook into Serial output
-    this.usart.onByteTransmit = (value) => {
-      this.serialBuffer += String.fromCharCode(value);
+  async start(components: CircuitComponent[], connections: WokwiConnection[], arduinoCode: string) {
+    // Convert current project types to Simulator types
+    const design: CircuitDesign = {
+      components: components.map(c => ({
+        ...c,
+        name: c.label || c.id,
+        code: c.type.includes('arduino') ? arduinoCode : undefined,
+        attrs: c.attributes
+      })),
+      connections: connections.map(conn => {
+        const [from, to, color] = conn;
+        const [fromId, fromPort] = from.split(':');
+        const [toId, toPort] = to.split(':');
+        return {
+          from: fromId,
+          fromPort: fromPort,
+          to: toId,
+          toPort: toPort,
+          color: color
+        };
+      })
     };
 
-    this.portB = new AVRIOPort(this.cpu, portBConfig);
-    this.portC = new AVRIOPort(this.cpu, portCConfig);
-    this.portD = new AVRIOPort(this.cpu, portDConfig);
+    await this.simulator.load(design);
+    this.isRunning = true;
+    this.lastTimestamp = performance.now();
+    this.animationFrame = requestAnimationFrame(this.tick.bind(this));
   }
 
-  private loadHex(hex: string, program: Uint16Array) {
-    const lines = hex.split('\n');
-    for (const line of lines) {
-      if (line.startsWith(':') && line.substr(7, 2) === '00') {
-        const bytes = parseInt(line.substr(1, 2), 16);
-        const addr = parseInt(line.substr(3, 4), 16);
-        for (let i = 0; i < bytes; i += 2) {
-          const word =
-            parseInt(line.substr(9 + i * 2 + 2, 2), 16) << 8 |
-            parseInt(line.substr(9 + i * 2, 2), 16);
-          program[addr / 2 + i / 2] = word;
-        }
-      }
-    }
-  }
+  private tick(timestamp: number) {
+    if (!this.isRunning) return;
 
-  // Send data from the UI to the Arduino (RX)
-  serialWrite(data: string) {
-     for (let i = 0; i < data.length; i++) {
-       this.usart.writeByte(data.charCodeAt(i));
-     }
-  }
+    const deltaTime = timestamp - this.lastTimestamp;
+    this.lastTimestamp = timestamp;
 
-  execute() {
-    // Run ~250,000 instructions per frame (~15MHz / 60fps)
-    for (let i = 0; i < 250000; i++) {
-      avrInstruction(this.cpu);
-      for (const timer of this.timers) {
-        timer.tick();
-      }
+    // Advance simulation
+    this.simulator.update(deltaTime);
+
+    // Run visual updates
+    if (this.onTick) {
+      this.onTick(this.simulator);
     }
 
-    // Capture Pin States
+    // Capture Pin States from Arduino
     const pinStates: Record<string, number> = {};
-    for (let i = 0; i < 8; i++) pinStates[i.toString()] = (this.portD.pinState(i) ? 1 : 0);
-    for (let i = 0; i < 6; i++) pinStates[(i + 8).toString()] = (this.portB.pinState(i) ? 1 : 0);
-    for (let i = 0; i < 6; i++) pinStates[(i + 14).toString()] = (this.portC.pinState(i) ? 1 : 0);
+    const runner = this.simulator.runner;
+    if (runner) {
+      // Capture D0-D7
+      for (let i = 0; i < 8; i++) {
+        pinStates[i.toString()] = runner.getPinState('D', i);
+      }
+      // Capture B0-B5 (D8-D13)
+      for (let i = 0; i < 6; i++) {
+        pinStates[(i + 8).toString()] = runner.getPinState('B', i);
+      }
+      // Capture C0-C5 (A0-A5)
+      for (let i = 0; i < 6; i++) {
+        pinStates[(i + 14).toString()] = runner.getPinState('C', i);
+      }
+    }
 
     // Send update to UI
-    this.onUpdate({ 
-      pinStates, 
-      serialOutput: this.serialBuffer 
+    this.onUpdate({
+      pinStates,
+      serialOutput: "" // Serial output is handled via onSerialOutput callback
     });
-    
-    // Clear buffer for next frame
-    this.serialBuffer = "";
 
-    this.animationFrame = requestAnimationFrame(() => this.execute());
+    this.animationFrame = requestAnimationFrame(this.tick.bind(this));
   }
 
   stop() {
+    this.isRunning = false;
     if (this.animationFrame) {
       cancelAnimationFrame(this.animationFrame);
     }
+    this.simulator.stop();
+  }
+
+  serialWrite(data: string) {
+    this.simulator.serialWrite(data);
+  }
+
+  getSimulator() {
+    return this.simulator;
   }
 }
 
-/**
- * Calls the Wokwi compilation API to turn C++ into HEX.
- */
-export async function compileArduinoCode(code: string): Promise<string> {
-  const response = await fetch('https://hexcoder.wokwi.com/compile', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ board: 'uno', sketch: code }),
-  });
-
-  const result = await response.json();
-  if (result.stdout && result.success === false) {
-    throw new Error(result.stdout);
-  }
-  if (!result.hex) {
-    throw new Error("Compilation failed: No HEX returned.");
-  }
-  return result.hex;
-}
+// For backward compatibility with useSimulationRunner hook
+export { compileSketch as compileArduinoCode } from '../simulator/core/Avr8jsService';

@@ -47,7 +47,7 @@ const InlineFormatter: React.FC<{ text: string }> = ({ text }) => {
         }
         if (part.startsWith('`') && part.endsWith('`')) {
           return (
-            <code key={i} className="bg-black/40 px-1.5 py-0.5 rounded text-cyan-300 font-mono text-xs border border-white/5">
+            <code key={i} className="bg-black/40 px-1.5 py-0.5 rounded text-brand-300 font-mono text-xs border border-white/5">
               {part.slice(1, -1)}
             </code>
           );
@@ -61,11 +61,11 @@ const InlineFormatter: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
-  messages, 
-  onSendMessage, 
+const ChatInterface: React.FC<ChatInterfaceProps> = ({
+  messages,
+  onSendMessage,
   onClear,
-  isProcessing 
+  isProcessing
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -83,7 +83,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0f1115] border-l border-[#1e2229] w-full shadow-2xl relative">
+    <div className="flex flex-col h-full bg-dark-900 border-l border-dark-700 w-full shadow-2xl relative">
       {/* Mini Title */}
       <div className="px-4 pt-4 text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">
         AI Chat Assistant
@@ -96,17 +96,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             key={msg.id}
             className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
           >
-            <div className={`mb-1 text-[10px] font-bold uppercase tracking-tighter ${msg.role === 'user' ? 'text-[#4a5568]' : 'text-cyan-500/50'}`}>
+            <div className={`mb-1 text-[10px] font-bold uppercase tracking-tighter ${msg.role === 'user' ? 'text-gray-500' : 'text-brand-500/50'}`}>
               {msg.role === 'user' ? 'You' : 'Ziro'}
             </div>
             <div
-              className={`max-w-[100%] rounded-2xl px-4 py-3 text-sm transition-all ${
-                msg.role === 'user'
-                  ? 'bg-cyan-500/10 text-cyan-50 border border-cyan-500/20'
-                  : msg.isError 
+              className={`max-w-[100%] rounded-2xl px-4 py-3 text-sm transition-all ${msg.role === 'user'
+                  ? 'bg-brand-500/10 text-brand-50 border border-brand-500/20'
+                  : msg.isError
                     ? 'bg-red-900/20 text-red-200 border border-red-800/30'
-                    : 'bg-[#1a1d24] text-[#cbd5e0] border border-[#2d3748]'
-              }`}
+                    : 'bg-dark-800 text-gray-300 border border-dark-700'
+                }`}
             >
               <FormattedMessage text={msg.text} />
             </div>
@@ -114,19 +113,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         ))}
         {isProcessing && (
           <div className="flex flex-col items-start">
-             <div className="mb-1 text-[10px] font-bold uppercase tracking-tighter text-cyan-500/50">Ziro</div>
-             <div className="bg-[#1a1d24] px-4 py-3 rounded-2xl border border-[#2d3748] flex gap-1.5">
-                <span className="w-1.5 h-1.5 bg-cyan-500/60 rounded-full animate-pulse"></span>
-                <span className="w-1.5 h-1.5 bg-cyan-500/60 rounded-full animate-pulse delay-75"></span>
-                <span className="w-1.5 h-1.5 bg-cyan-500/60 rounded-full animate-pulse delay-150"></span>
-             </div>
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-tighter text-brand-500/50">Ziro</div>
+            <div className="bg-dark-800 px-4 py-3 rounded-2xl border border-dark-700 flex gap-1.5">
+              <span className="w-1.5 h-1.5 bg-brand-500/60 rounded-full animate-pulse"></span>
+              <span className="w-1.5 h-1.5 bg-brand-500/60 rounded-full animate-pulse delay-75"></span>
+              <span className="w-1.5 h-1.5 bg-brand-500/60 rounded-full animate-pulse delay-150"></span>
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-[#0f1115] border-t border-[#1e2229]">
+      <div className="p-4 bg-dark-900 border-t border-dark-700">
         <form onSubmit={handleSubmit} className="relative group">
           <input
             type="text"
@@ -134,12 +133,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             onChange={(e) => setInput(e.target.value)}
             disabled={isProcessing}
             placeholder="Ask Ziro..."
-            className="w-full bg-[#1a1d24] text-[#cbd5e0] placeholder-[#4a5568] rounded-xl pl-4 pr-12 py-3 border border-[#2d3748] focus:outline-none focus:border-cyan-500/50 transition-all text-sm"
+            className="w-full bg-dark-800 text-gray-300 placeholder-gray-500 rounded-xl pl-4 pr-12 py-3 border border-dark-700 focus:outline-none focus:border-brand-500/50 transition-all text-sm"
           />
           <button
             type="submit"
             disabled={!input.trim() || isProcessing}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 bg-[#2d3748] text-[#a0aec0] rounded-lg hover:bg-cyan-500 hover:text-white disabled:opacity-30 transition-all"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 bg-dark-700 text-gray-400 rounded-lg hover:bg-brand-500 hover:text-white disabled:opacity-30 transition-all"
           >
             <ArrowRight className="w-4 h-4" />
           </button>

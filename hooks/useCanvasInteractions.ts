@@ -30,8 +30,11 @@ export const useCanvasInteractions = ({
   onDragEnd,
   onConnectionCreated
 }: UseCanvasInteractionsProps) => {
-  
+
   const lastMousePos = useRef({ x: 0, y: 0 });
+  const dragStartCanvasPos = useRef({ x: 0, y: 0 });
+  const componentStartPos = useRef({ x: 0, y: 0 });
+  const wireStartPoints = useRef<Point[]>([]);
   const hasMovedRef = useRef(false);
 
   // State
@@ -56,13 +59,21 @@ export const useCanvasInteractions = ({
   };
 
   const handleComponentMouseDown = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     if (drawingState) return;
     onSelectComponent(id);
     setDragMode('COMPONENT');
     setDraggedComponentId(id);
     hasMovedRef.current = false;
     lastMousePos.current = { x: e.clientX, y: e.clientY };
+
+    const canvasCoords = getCanvasCoords(e.clientX, e.clientY);
+    dragStartCanvasPos.current = canvasCoords;
+
+    const component = components.find(c => c.id === id);
+    if (component) {
+      componentStartPos.current = { x: component.x, y: component.y };
+    }
   };
 
   const handleWireClick = (e: React.MouseEvent, index: string) => {
@@ -73,57 +84,64 @@ export const useCanvasInteractions = ({
   };
 
   const handleWireHandleMouseDown = (e: React.MouseEvent, wireIndex: string, segmentIndex: number) => {
-      e.stopPropagation();
-      const points = wireRoutes.get(wireIndex);
-      if (!points) return;
+    e.stopPropagation();
+    const points = wireRoutes.get(wireIndex);
+    if (!points) return;
 
-      if (points.length === 2) {
-          const p0 = points[0];
-          const p1 = points[1];
-          const orientation = Math.abs(p0.x - p1.x) > Math.abs(p0.y - p1.y) ? 'H' : 'V';
-          const newPoints = [p0, { ...p0 }, { ...p1 }, p1];
-          setWireRoutes(prev => new Map(prev).set(wireIndex, newPoints));
-          setDragMode('WIRE');
-          setWireDragState({ wireIndex, segmentIndex: 1, orientation });
-      } else {
-          if (segmentIndex === 0 || segmentIndex === points.length - 2) return;
-          const p1 = points[segmentIndex];
-          const p2 = points[segmentIndex + 1];
-          const orientation = Math.abs(p1.x - p2.x) > Math.abs(p1.y - p2.y) ? 'H' : 'V';
-          setDragMode('WIRE');
-          setWireDragState({ wireIndex, segmentIndex, orientation });
-      }
-      lastMousePos.current = { x: e.clientX, y: e.clientY };
+    if (points.length === 2) {
+      const p0 = points[0];
+      const p1 = points[1];
+      const orientation = Math.abs(p0.x - p1.x) > Math.abs(p0.y - p1.y) ? 'H' : 'V';
+      const newPoints = [p0, { ...p0 }, { ...p1 }, p1];
+      setWireRoutes(prev => new Map(prev).set(wireIndex, newPoints));
+      setDragMode('WIRE');
+      setWireDragState({ wireIndex, segmentIndex: 1, orientation });
+    } else {
+      if (segmentIndex === 0 || segmentIndex === points.length - 2) return;
+      const p1 = points[segmentIndex];
+      const p2 = points[segmentIndex + 1];
+      const orientation = Math.abs(p1.x - p2.x) > Math.abs(p1.y - p2.y) ? 'H' : 'V';
+      setDragMode('WIRE');
+      setWireDragState({ wireIndex, segmentIndex, orientation });
+    }
+    lastMousePos.current = { x: e.clientX, y: e.clientY };
+
+    const canvasCoords = getCanvasCoords(e.clientX, e.clientY);
+    dragStartCanvasPos.current = canvasCoords;
+    wireStartPoints.current = points;
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (dragMode === 'IDLE') {
-        const canvasCoords = getCanvasCoords(e.clientX, e.clientY);
-        setMousePos(canvasCoords);
-        return; 
+      const canvasCoords = getCanvasCoords(e.clientX, e.clientY);
+      setMousePos(canvasCoords);
+      return;
     }
     const deltaX = e.clientX - lastMousePos.current.x;
     const deltaY = e.clientY - lastMousePos.current.y;
     lastMousePos.current = { x: e.clientX, y: e.clientY };
     const canvasCoords = getCanvasCoords(e.clientX, e.clientY);
-    setMousePos(canvasCoords); 
+    setMousePos(canvasCoords);
 
     if (dragMode === 'COMPONENT' && draggedComponentId) {
-        hasMovedRef.current = true;
-        const component = components.find(c => c.id === draggedComponentId);
-        if (component) {
-            const scale = transform.scale;
-            onComponentMove(draggedComponentId, component.x + (deltaX / scale), component.y + (deltaY / scale));
-        }
+      hasMovedRef.current = true;
+      const totalDeltaX = canvasCoords.x - dragStartCanvasPos.current.x;
+      const totalDeltaY = canvasCoords.y - dragStartCanvasPos.current.y;
+
+      onComponentMove(
+        draggedComponentId,
+        componentStartPos.current.x + totalDeltaX,
+        componentStartPos.current.y + totalDeltaY
+      );
     } else if (dragMode === 'WIRE' && wireDragState) {
-        const { wireIndex, segmentIndex, orientation } = wireDragState;
-        const currentPoints = wireRoutes.get(wireIndex);
-        if (currentPoints) {
-            const newPoints = updateRouteWithDrag(currentPoints, segmentIndex, canvasCoords, orientation);
-            setWireRoutes(prev => new Map(prev).set(wireIndex, newPoints));
-        }
+      const { wireIndex, segmentIndex, orientation } = wireDragState;
+      const currentPoints = wireStartPoints.current;
+      if (currentPoints.length > 0) {
+        const newPoints = updateRouteWithDrag(currentPoints, segmentIndex, canvasCoords, orientation);
+        setWireRoutes(prev => new Map(prev).set(wireIndex, newPoints));
+      }
     } else if (dragMode === 'PAN') {
-        pan(deltaX, deltaY);
+      pan(deltaX, deltaY);
     }
   };
 
@@ -141,16 +159,16 @@ export const useCanvasInteractions = ({
     e.stopPropagation();
     e.preventDefault();
     if (drawingState) {
-      if (drawingState.componentId !== compId) { 
-          onConnectionCreated?.(drawingState.componentId, drawingState.pinName, compId, pinName);
+      if (drawingState.componentId !== compId) {
+        onConnectionCreated?.(drawingState.componentId, drawingState.pinName, compId, pinName);
       }
       setDrawingState(null);
     } else {
       const component = components.find(c => c.id === compId);
       let startDirection: 'H' | 'V' = 'H';
       if (component) {
-          const vec = getPinExitVector(component, pinName, layoutData);
-          if (Math.abs(vec.y) > Math.abs(vec.x)) startDirection = 'V';
+        const vec = getPinExitVector(component, pinName, layoutData);
+        if (Math.abs(vec.y) > Math.abs(vec.x)) startDirection = 'V';
       }
       setDrawingState({ componentId: compId, pinName, startX: x, startY: y, startDirection });
       setMousePos({ x, y });

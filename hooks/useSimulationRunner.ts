@@ -1,56 +1,68 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { AVRRunner, SimulationUpdate, compileArduinoCode } from '../services/simulationService';
+import { SimulationService, SimulationUpdate, compileArduinoCode } from '../services/simulationService';
+import { CircuitComponent, WokwiConnection } from '../types';
 
-export const useSimulationRunner = (arduinoCode: string) => {
+import { CircuitSimulator } from '../simulator/core/Simulator';
+
+export const useSimulationRunner = (
+  components: CircuitComponent[],
+  connections: WokwiConnection[],
+  arduinoCode: string,
+  onTick?: (simulator: CircuitSimulator) => void
+) => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   const [simulationPinStates, setSimulationPinStates] = useState<Record<string, number>>({});
   const [serialOutput, setSerialOutput] = useState<string>("");
-  
-  const runnerRef = useRef<AVRRunner | null>(null);
+
+  const serviceRef = useRef<SimulationService | null>(null);
 
   useEffect(() => {
     return () => {
-      if (runnerRef.current) {
-        runnerRef.current.stop();
+      if (serviceRef.current) {
+        serviceRef.current.stop();
       }
     };
   }, []);
 
   const stopSimulation = useCallback(() => {
-    if (runnerRef.current) {
-      runnerRef.current.stop();
-      runnerRef.current = null;
+    if (serviceRef.current) {
+      serviceRef.current.stop();
+      serviceRef.current = null;
     }
     setIsSimulating(false);
     setSimulationPinStates({});
-    // We optionally clear serial output on stop, or keep it for review. Keeping it for now.
   }, []);
 
   const startSimulation = useCallback(async () => {
     if (!arduinoCode) {
-        throw new Error("No code to simulate!");
+      throw new Error("No code to simulate!");
     }
     setIsCompiling(true);
-    setSerialOutput(""); // Clear previous run output
+    setSerialOutput("");
     try {
-        const hex = await compileArduinoCode(arduinoCode);
-        const runner = new AVRRunner(hex, (update: SimulationUpdate) => {
+      // We don't actually use the hex here anymore since SimulationService handles compilation via Simulator
+      // But we keep compileArduinoCode call if we want to show compilation errors early.
+      // Actually, Simulator.load calls compileSketch.
+
+      const service = new SimulationService((update: SimulationUpdate) => {
+        if (Object.keys(update.pinStates).length > 0) {
           setSimulationPinStates(update.pinStates);
-          if (update.serialOutput) {
-            setSerialOutput(prev => prev + update.serialOutput);
-          }
-        });
-        runnerRef.current = runner;
-        runner.execute();
-        setIsSimulating(true);
+        }
+        if (update.serialOutput) {
+          setSerialOutput(prev => prev + update.serialOutput);
+        }
+      }, onTick);
+      serviceRef.current = service;
+      await service.start(components, connections, arduinoCode);
+      setIsSimulating(true);
     } catch (err) {
-        throw err;
+      throw err;
     } finally {
-        setIsCompiling(false);
+      setIsCompiling(false);
     }
-  }, [arduinoCode]);
+  }, [components, connections, arduinoCode]);
 
   const toggleSimulation = useCallback(async () => {
     if (isSimulating) {
@@ -66,19 +78,19 @@ export const useSimulationRunner = (arduinoCode: string) => {
 
   const resetSimulation = useCallback(async () => {
     if (isSimulating) {
-        stopSimulation();
-        try {
-            await startSimulation();
-        } catch (e: any) {
-            alert("Reset Failed: " + e.message);
-        }
+      stopSimulation();
+      try {
+        await startSimulation();
+      } catch (e: any) {
+        alert("Reset Failed: " + e.message);
+      }
     }
   }, [isSimulating, stopSimulation, startSimulation]);
 
   const sendSerialInput = useCallback((text: string) => {
-     if (runnerRef.current && isSimulating) {
-        runnerRef.current.serialWrite(text);
-     }
+    if (serviceRef.current && isSimulating) {
+      serviceRef.current.serialWrite(text);
+    }
   }, [isSimulating]);
 
   const clearSerialOutput = useCallback(() => {
@@ -94,6 +106,7 @@ export const useSimulationRunner = (arduinoCode: string) => {
     resetSimulation,
     stopSimulation,
     sendSerialInput,
-    clearSerialOutput
+    clearSerialOutput,
+    getSimulator: () => serviceRef.current?.getSimulator()
   };
 };
