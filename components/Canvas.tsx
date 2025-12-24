@@ -134,16 +134,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
           transition: dragMode !== 'PAN' ? 'transform 0.2s cubic-bezier(0.1, 0.7, 0.1, 1)' : 'none' 
         }}
       >
-        <ComponentLayer 
-          components={components}
-          layoutData={layoutData}
-          draggedComponentId={draggedComponentId}
-          selectedComponentId={selectedComponentId}
-          onComponentMouseDown={handlers.handleComponentMouseDown}
-          setComponentRef={setComponentRef}
-        />
-
+        {/* Layer 1 (Bottom): Base Wires - Behind components to reduce clutter */}
         <WireOverlay 
+          layer="bottom"
           connections={connections}
           wireRoutes={wireRoutes}
           selectedWireIndex={selectedWireIndex}
@@ -153,6 +146,29 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
           onWireHandleMouseDown={handlers.handleWireHandleMouseDown}
         />
 
+        {/* Layer 2 (Middle): Components */}
+        <ComponentLayer 
+          components={components}
+          layoutData={layoutData}
+          draggedComponentId={draggedComponentId}
+          selectedComponentId={selectedComponentId}
+          onComponentMouseDown={handlers.handleComponentMouseDown}
+          setComponentRef={setComponentRef}
+        />
+
+        {/* Layer 3 (Top): Interaction Wires - Handles & Highlights on top of components */}
+        <WireOverlay 
+          layer="top"
+          connections={connections}
+          wireRoutes={wireRoutes}
+          selectedWireIndex={selectedWireIndex}
+          drawingState={drawingState}
+          mousePos={mousePos}
+          onWireClick={handlers.handleWireClick}
+          onWireHandleMouseDown={handlers.handleWireHandleMouseDown}
+        />
+
+        {/* Layer 4 (Overlay): Pin Interactions */}
         <PinOverlay 
           components={components}
           layoutData={layoutData}

@@ -15,177 +15,127 @@ interface ComponentSpec {
 
 export const STATIC_COMPONENT_DATA: Record<string, ComponentSpec> = {
   'wokwi-arduino-uno': {
-    width: 330,
-    height: 240,
+    width: 274.318110239478,
+    height: 201.600000002394,
     pins: [
-      { name: '0', x: 315, y: 15 }, 
-      { name: '1', x: 302, y: 15 },
-      { name: '2', x: 289, y: 15 },
-      { name: '3', x: 276, y: 15 },
-      { name: '4', x: 263, y: 15 },
-      { name: '5', x: 250, y: 15 },
-      { name: '6', x: 237, y: 15 },
-      { name: '7', x: 224, y: 15 },
-      { name: '8', x: 204, y: 15 },
-      { name: '9', x: 191, y: 15 },
-      { name: '10', x: 178, y: 15 },
-      { name: '11', x: 165, y: 15 },
-      { name: '12', x: 152, y: 15 },
-      { name: '13', x: 139, y: 15 },
-      { name: 'GND', x: 126, y: 15 }, 
-      { name: 'AREF', x: 113, y: 15 },
-      { name: 'SDA', x: 100, y: 15 },
-      { name: 'SCL', x: 87, y: 15 },
-      { name: 'A0', x: 224, y: 225 },
-      { name: 'A1', x: 237, y: 225 },
-      { name: 'A2', x: 250, y: 225 },
-      { name: 'A3', x: 263, y: 225 },
-      { name: 'A4', x: 276, y: 225 },
-      { name: 'A5', x: 289, y: 225 },
-      { name: 'VIN', x: 204, y: 225 },
-      { name: 'GND', x: 191, y: 225 }, 
-      { name: 'GND', x: 178, y: 225 }, 
-      { name: '5V', x: 165, y: 225 },
-      { name: '3.3V', x: 152, y: 225 },
-      { name: 'RESET', x: 139, y: 225 },
-      { name: 'IOREF', x: 126, y: 225 }
+      { name: "A5.2", x: 87, y: 9 }, { name: "A4.2", x: 97, y: 9 }, { name: "AREF", x: 106, y: 9 }, { name: "GND.1", x: 115.5, y: 9 },
+      { name: "13", x: 125, y: 9 }, { name: "12", x: 134.5, y: 9 }, { name: "11", x: 144, y: 9 }, { name: "10", x: 153.5, y: 9 },
+      { name: "9", x: 163, y: 9 }, { name: "8", x: 173, y: 9 }, { name: "7", x: 189, y: 9 }, { name: "6", x: 198.5, y: 9 },
+      { name: "5", x: 208, y: 9 }, { name: "4", x: 217.5, y: 9 }, { name: "3", x: 227, y: 9 }, { name: "2", x: 236.5, y: 9 },
+      { name: "1", x: 246, y: 9 }, { name: "0", x: 255.5, y: 9 }, { name: "IOREF", x: 131, y: 191.5 }, { name: "RESET", x: 140.5, y: 191.5 },
+      { name: "3.3V", x: 150, y: 191.5 }, { name: "5V", x: 160, y: 191.5 }, { name: "GND.2", x: 169.5, y: 191.5 }, { name: "GND.3", x: 179, y: 191.5 },
+      { name: "VIN", x: 188.5, y: 191.5 }, { name: "A0", x: 208, y: 191.5 }, { name: "A1", x: 217.5, y: 191.5 }, { name: "A2", x: 227, y: 191.5 },
+      { name: "A3", x: 236.5, y: 191.5 }, { name: "A4", x: 246, y: 191.5 }, { name: "A5", x: 255.5, y: 191.5 }
     ]
   },
   'wokwi-arduino-nano': { 
-    width: 60, 
-    height: 180, 
+    width: 169.70078740359,
+    height: 67.27559055198,
     pins: [
-      // Left Side (Top to Bottom)
-      { name: 'TX', x: 0, y: 10 }, { name: 'RX', x: 0, y: 20 }, { name: 'RST', x: 0, y: 30 }, { name: 'GND', x: 0, y: 40 },
-      { name: '2', x: 0, y: 50 }, { name: '3', x: 0, y: 60 }, { name: '4', x: 0, y: 70 }, { name: '5', x: 0, y: 80 },
-      { name: '6', x: 0, y: 90 }, { name: '7', x: 0, y: 100 }, { name: '8', x: 0, y: 110 }, { name: '9', x: 0, y: 120 },
-      { name: '10', x: 0, y: 130 }, { name: '11', x: 0, y: 140 }, { name: '12', x: 0, y: 150 },
-      // Right Side (Top to Bottom)
-      { name: 'VIN', x: 60, y: 10 }, { name: 'GND', x: 60, y: 20 }, { name: 'RST', x: 60, y: 30 }, { name: '5V', x: 60, y: 40 },
-      { name: 'A7', x: 60, y: 50 }, { name: 'A6', x: 60, y: 60 }, { name: 'A5', x: 60, y: 70 }, { name: 'A4', x: 60, y: 80 },
-      { name: 'A3', x: 60, y: 90 }, { name: 'A2', x: 60, y: 100 }, { name: 'A1', x: 60, y: 110 }, { name: 'A0', x: 60, y: 120 },
-      { name: 'REF', x: 60, y: 130 }, { name: '3.3V', x: 60, y: 140 }, { name: '13', x: 60, y: 150 }
+      { name: "12", x: 19.7, y: 4.8 }, { name: "11", x: 29.3, y: 4.8 }, { name: "10", x: 38.9, y: 4.8 }, { name: "9", x: 48.5, y: 4.8 },
+      { name: "8", x: 58.1, y: 4.8 }, { name: "7", x: 67.7, y: 4.8 }, { name: "6", x: 77.3, y: 4.8 }, { name: "5", x: 86.9, y: 4.8 },
+      { name: "4", x: 96.5, y: 4.8 }, { name: "3", x: 106.1, y: 4.8 }, { name: "2", x: 115.7, y: 4.8 }, { name: "GND.2", x: 125.3, y: 4.8 },
+      { name: "RESET.2", x: 134.9, y: 4.8 }, { name: "0", x: 144.5, y: 4.8 }, { name: "1", x: 154.1, y: 4.8 }, { name: "13", x: 19.7, y: 62.4 },
+      { name: "3.3V", x: 29.3, y: 62.4 }, { name: "AREF", x: 38.9, y: 62.4 }, { name: "A0", x: 48.5, y: 62.4 }, { name: "A1", x: 58.1, y: 62.4 },
+      { name: "A2", x: 67.7, y: 62.4 }, { name: "A3", x: 77.3, y: 62.4 }, { name: "A4", x: 86.9, y: 62.4 }, { name: "A5", x: 96.5, y: 62.4 },
+      { name: "A6", x: 106.1, y: 62.4 }, { name: "A7", x: 115.7, y: 62.4 }, { name: "5V", x: 125.3, y: 62.4 }, { name: "RESET", x: 134.9, y: 62.4 },
+      { name: "GND.1", x: 144.5, y: 62.4 }, { name: "VIN", x: 154.1, y: 62.4 }, { name: "12.2", x: 163.7, y: 43.2 }, { name: "5V.2", x: 154.1, y: 43.2 },
+      { name: "13.2", x: 163.7, y: 33.6 }, { name: "11.2", x: 154.1, y: 33.6 }, { name: "RESET.3", x: 163.7, y: 24 }, { name: "GND.3", x: 154.1, y: 24 }
     ] 
   },
   'wokwi-arduino-mega': { 
-    width: 550, 
-    height: 280, 
+    width: 388.006299217206,
+    height: 192.00000000228,
     pins: [
-       // Top Row - Digital & Communication
-       { name: '0', x: 500, y: 15 }, { name: '1', x: 488, y: 15 }, { name: '2', x: 476, y: 15 }, { name: '3', x: 464, y: 15 },
-       { name: '4', x: 452, y: 15 }, { name: '5', x: 440, y: 15 }, { name: '6', x: 428, y: 15 }, { name: '7', x: 416, y: 15 },
-       { name: '8', x: 396, y: 15 }, { name: '9', x: 384, y: 15 }, { name: '10', x: 372, y: 15 }, { name: '11', x: 360, y: 15 },
-       { name: '12', x: 348, y: 15 }, { name: '13', x: 336, y: 15 },
-       { name: 'GND', x: 324, y: 15 }, { name: 'AREF', x: 312, y: 15 }, { name: 'SDA', x: 300, y: 15 }, { name: 'SCL', x: 288, y: 15 },
-       
-       // Bottom Row - Power & Analog
-       { name: 'A0', x: 416, y: 265 }, { name: 'A1', x: 428, y: 265 }, { name: 'A2', x: 440, y: 265 }, { name: 'A3', x: 452, y: 265 },
-       { name: 'A4', x: 464, y: 265 }, { name: 'A5', x: 476, y: 265 }, { name: 'A6', x: 488, y: 265 }, { name: 'A7', x: 500, y: 265 },
-       { name: 'VIN', x: 396, y: 265 }, { name: 'GND', x: 384, y: 265 }, { name: 'GND', x: 372, y: 265 }, { name: '5V', x: 360, y: 265 },
-       { name: '3.3V', x: 348, y: 265 }, { name: 'RESET', x: 336, y: 265 }, { name: 'IOREF', x: 324, y: 265 },
-
-       // Right Side Block (Digital 22-53) - Simplified representation
-       { name: '22', x: 535, y: 40 }, { name: '23', x: 535, y: 52 }, 
-       { name: '24', x: 535, y: 64 }, { name: '25', x: 535, y: 76 },
-       { name: '50', x: 535, y: 200 }, { name: '51', x: 535, y: 212 },
-       { name: '52', x: 535, y: 224 }, { name: '53', x: 535, y: 236 }
+      { name: "SCL", x: 90, y: 9 }, { name: "SDA", x: 100, y: 9 }, { name: "AREF", x: 109, y: 9 }, { name: "GND.1", x: 119, y: 9 },
+      { name: "13", x: 129, y: 9 }, { name: "12", x: 138, y: 9 }, { name: "11", x: 148, y: 9 }, { name: "10", x: 157.5, y: 9 },
+      { name: "9", x: 167.5, y: 9 }, { name: "8", x: 177, y: 9 }, { name: "7", x: 190, y: 9 }, { name: "6", x: 200, y: 9 },
+      { name: "5", x: 209.5, y: 9 }, { name: "4", x: 219, y: 9 }, { name: "3", x: 228.5, y: 9 }, { name: "2", x: 238, y: 9 },
+      { name: "1", x: 247.5, y: 9 }, { name: "0", x: 257.5, y: 9 }, { name: "14", x: 270.5, y: 9 }, { name: "15", x: 280, y: 9 },
+      { name: "16", x: 289.5, y: 9 }, { name: "17", x: 299, y: 9 }, { name: "18", x: 308.5, y: 9 }, { name: "19", x: 318.5, y: 9 },
+      { name: "20", x: 328, y: 9 }, { name: "21", x: 337.5, y: 9 }, { name: "5V.1", x: 361, y: 8 }, { name: "5V.2", x: 371, y: 8 },
+      { name: "22", x: 361, y: 17.5 }, { name: "23", x: 371, y: 17.5 }, { name: "24", x: 361, y: 27.25 }, { name: "25", x: 371, y: 27.25 },
+      { name: "26", x: 361, y: 36.75 }, { name: "27", x: 371, y: 36.75 }, { name: "28", x: 361, y: 46.25 }, { name: "29", x: 371, y: 46.25 },
+      { name: "30", x: 361, y: 56 }, { name: "31", x: 371, y: 56 }, { name: "32", x: 361, y: 65.5 }, { name: "33", x: 371, y: 65.5 },
+      { name: "34", x: 361, y: 75 }, { name: "35", x: 371, y: 75 }, { name: "36", x: 361, y: 84.5 }, { name: "37", x: 371, y: 84.5 },
+      { name: "38", x: 361, y: 94.25 }, { name: "39", x: 371, y: 94.25 }, { name: "40", x: 361, y: 103.75 }, { name: "41", x: 371, y: 103.75 },
+      { name: "42", x: 361, y: 113.5 }, { name: "43", x: 371, y: 113.5 }, { name: "44", x: 361, y: 123 }, { name: "45", x: 371, y: 123 },
+      { name: "46", x: 361, y: 132.75 }, { name: "47", x: 371, y: 132.75 }, { name: "48", x: 361, y: 142.25 }, { name: "49", x: 371, y: 142.25 },
+      { name: "50", x: 361, y: 152 }, { name: "51", x: 371, y: 152 }, { name: "52", x: 361, y: 161.5 }, { name: "53", x: 371, y: 161.5 },
+      { name: "GND.4", x: 361, y: 171.25 }, { name: "GND.5", x: 371, y: 171.25 }, { name: "IOREF", x: 136, y: 184.5 }, { name: "RESET", x: 145.5, y: 184.5 },
+      { name: "3.3V", x: 155, y: 184.5 }, { name: "5V", x: 164.5, y: 184.5 }, { name: "GND.2", x: 174.25, y: 184.5 }, { name: "GND.3", x: 183.75, y: 184.5 },
+      { name: "VIN", x: 193.5, y: 184.5 }, { name: "A0", x: 208.5, y: 184.5 }, { name: "A1", x: 218, y: 184.5 }, { name: "A2", x: 227.5, y: 184.5 },
+      { name: "A3", x: 237.25, y: 184.5 }, { name: "A4", x: 246.75, y: 184.5 }, { name: "A5", x: 256.25, y: 184.5 }, { name: "A6", x: 266, y: 184.5 },
+      { name: "A7", x: 275.5, y: 184.5 }, { name: "A8", x: 290.25, y: 184.5 }, { name: "A9", x: 300, y: 184.5 }, { name: "A10", x: 309.5, y: 184.5 },
+      { name: "A11", x: 319.25, y: 184.5 }, { name: "A12", x: 328.75, y: 184.5 }, { name: "A13", x: 338.5, y: 184.5 }, { name: "A14", x: 348, y: 184.5 },
+      { name: "A15", x: 357.75, y: 184.5 }
     ] 
   },
   'wokwi-led': {
-    width: 28,
-    height: 48,
-    pins: [{ name: 'A', x: 10, y: 46 }, { name: 'C', x: 18, y: 46 }]
+    width: 40,
+    height: 50,
+    pins: [{ name: "A", x: 25, y: 42 }, { name: "C", x: 15, y: 42 }]
   },
   'wokwi-resistor': {
-    width: 100,
-    height: 20,
-    pins: [{ name: '1', x: 0, y: 10 }, { name: '2', x: 100, y: 10 }]
+    width: 59.130708662119496,
+    height: 11.3385826773,
+    pins: [{ name: "1", x: 0, y: 14 }, { name: "2", x: 58.8, y: 14 }]
   },
   'wokwi-pushbutton': {
-    width: 50,
-    height: 50,
-    pins: [{ name: '1.l', x: 0, y: 14 }, { name: '2.l', x: 0, y: 36 }, { name: '1.r', x: 50, y: 14 }, { name: '2.r', x: 50, y: 36 }]
+    width: 67.2831496070982,
+    height: 45.3543307092,
+    pins: [{ name: "1.l", x: 0, y: 13 }, { name: "2.l", x: 0, y: 32 }, { name: "1.r", x: 67, y: 13 }, { name: "2.r", x: 67, y: 32 }]
   },
   'wokwi-slide-switch': { 
     width: 40, 
     height: 20, 
     pins: [{ name: '1', x: 5, y: 20 }, { name: '2', x: 20, y: 20 }, { name: '3', x: 35, y: 20 }] 
   },
-  'wokwi-tilt-switch': { 
-    width: 20, 
-    height: 40, 
-    pins: [{ name: '1', x: 5, y: 40 }, { name: '2', x: 15, y: 40 }] 
-  },
   'wokwi-potentiometer': {
-    width: 50,
-    height: 60,
-    pins: [{ name: 'GND', x: 5, y: 55 }, { name: 'SIG', x: 25, y: 55 }, { name: 'VCC', x: 45, y: 55 }]
-  },
-  'wokwi-slide-potentiometer': { 
-    width: 140, 
-    height: 30, 
-    pins: [{ name: 'VCC', x: 10, y: 30 }, { name: 'SIG', x: 70, y: 30 }, { name: 'GND', x: 130, y: 30 }] 
+    width: 75.590551182,
+    height: 75.590551182,
+    pins: [{ name: "GND", x: 29, y: 68.5 }, { name: "SIG", x: 39, y: 68.5 }, { name: "VCC", x: 49, y: 68.5 }]
   },
   'wokwi-membrane-keypad': { 
     width: 180, 
     height: 230, 
     pins: [
-      { name: 'R1', x: 40, y: 0 }, { name: 'R2', x: 54, y: 0 }, { name: 'R3', x: 68, y: 0 }, { name: 'R4', x: 82, y: 0 },
-      { name: 'C1', x: 96, y: 0 }, { name: 'C2', x: 110, y: 0 }, { name: 'C3', x: 124, y: 0 }, { name: 'C4', x: 138, y: 0 }
-    ] 
-  },
-  'wokwi-rotary-dialer': { width: 200, height: 200, pins: [{ name: '1', x: 100, y: 0 }, { name: '2', x: 120, y: 0 }] },
-  'wokwi-analog-joystick': { 
-    width: 80, 
-    height: 80, 
-    pins: [
-      { name: 'GND', x: 10, y: 0 }, { name: '5V', x: 25, y: 0 }, { name: 'VRX', x: 40, y: 0 }, { name: 'VRY', x: 55, y: 0 }, { name: 'SW', x: 70, y: 0 }
+      { name: "R1", x: 76.5, y: 338 }, { name: "R2", x: 86, y: 338 }, { name: "R3", x: 95.75, y: 338 }, { name: "R4", x: 105.25, y: 338 },
+      { name: "C1", x: 115, y: 338 }, { name: "C2", x: 124.5, y: 338 }, { name: "C3", x: 134, y: 338 }
     ] 
   },
   'wokwi-servo': {
-    width: 100,
-    height: 100,
-    pins: [{ name: 'GND', x: 10, y: 100 }, { name: 'VCC', x: 25, y: 100 }, { name: 'PWM', x: 40, y: 100 }]
+    width: 170.0787401595,
+    height: 119.54645669433299,
+    pins: [{ name: "GND", x: 0, y: 50 }, { name: "V+", x: 0, y: 59.5 }, { name: "PWM", x: 0, y: 69 }]
   },
   'wokwi-hc-sr04': {
-      width: 80,
-      height: 40,
-      pins: [{ name: 'VCC', x: 10, y: 36 }, { name: 'TRIG', x: 30, y: 36 }, { name: 'ECHO', x: 50, y: 36 }, { name: 'GND', x: 70, y: 36 }]
+      width: 170.0787401595,
+      height: 94.4881889775,
+      pins: [{ name: "VCC", x: 71.3, y: 94.5 }, { name: "TRIG", x: 81.3, y: 94.5 }, { name: "ECHO", x: 91.3, y: 94.5 }, { name: "GND", x: 101.3, y: 94.5 }]
   },
   'wokwi-lcd1602': {
-    width: 320,
-    height: 60,
+    width: 270,
+    height: 70,
     pins: [
-      { name: 'VSS', x: 10, y: 10 }, { name: 'VDD', x: 25, y: 10 }, { name: 'V0', x: 40, y: 10 }, 
-      { name: 'RS', x: 55, y: 10 }, { name: 'RW', x: 70, y: 10 }, { name: 'E', x: 85, y: 10 },
-      { name: 'D0', x: 100, y: 10 }, { name: 'D1', x: 115, y: 10 }, { name: 'D2', x: 130, y: 10 }, { name: 'D3', x: 145, y: 10 },
-      { name: 'D4', x: 160, y: 10 }, { name: 'D5', x: 175, y: 10 }, { name: 'D6', x: 190, y: 10 }, { name: 'D7', x: 205, y: 10 },
-      { name: 'A', x: 220, y: 10 }, { name: 'K', x: 235, y: 10 },
-      // I2C Pins if simplified
-      { name: 'GND', x: 10, y: 10 }, { name: 'VCC', x: 25, y: 10 }, { name: 'SDA', x: 40, y: 10 }, { name: 'SCL', x: 55, y: 10 }
+      { name: "VSS", x: 20, y: 15 }, { name: "VDD", x: 34, y: 15 }, { name: "V0", x: 48, y: 15 }, { name: "RS", x: 62, y: 15 },
+      { name: "RW", x: 76, y: 15 }, { name: "E", x: 90, y: 15 }, { name: "D0", x: 104, y: 15 }, { name: "D1", x: 118, y: 15 },
+      { name: "D2", x: 132, y: 15 }, { name: "D3", x: 146, y: 15 }, { name: "D4", x: 160, y: 15 }, { name: "D5", x: 174, y: 15 },
+      { name: "D6", x: 188, y: 15 }, { name: "D7", x: 202, y: 15 }, { name: "A", x: 216, y: 15 }, { name: "K", x: 230, y: 15 }
     ]
   },
-  'wokwi-lcd2004': { 
-      width: 350, 
-      height: 100, 
-      pins: [
-        { name: 'VSS', x: 10, y: 10 }, { name: 'VDD', x: 25, y: 10 }, { name: 'V0', x: 40, y: 10 }, 
-        { name: 'RS', x: 55, y: 10 }, { name: 'RW', x: 70, y: 10 }, { name: 'E', x: 85, y: 10 },
-        { name: 'D0', x: 100, y: 10 }, { name: 'D1', x: 115, y: 10 }, { name: 'D2', x: 130, y: 10 }, { name: 'D3', x: 145, y: 10 },
-        { name: 'D4', x: 160, y: 10 }, { name: 'D5', x: 175, y: 10 }, { name: 'D6', x: 190, y: 10 }, { name: 'D7', x: 205, y: 10 },
-        { name: 'A', x: 220, y: 10 }, { name: 'K', x: 235, y: 10 },
-        { name: 'GND', x: 10, y: 10 }, { name: 'VCC', x: 25, y: 10 }, { name: 'SDA', x: 40, y: 10 }, { name: 'SCL', x: 55, y: 10 }
-      ] 
-  }, 
   'wokwi-ssd1306': { 
-    width: 100, 
-    height: 100, 
-    pins: [{ name: 'GND', x: 20, y: 5 }, { name: 'VCC', x: 40, y: 5 }, { name: 'SCL', x: 60, y: 5 }, { name: 'SDA', x: 80, y: 5 }] 
+    width: 150, 
+    height: 116, 
+    pins: [
+      { name: "DATA", x: 36.5, y: 12.5 }, { name: "CLK", x: 45.5, y: 12.5 }, { name: "DC", x: 54.5, y: 12.5 }, { name: "RST", x: 64.5, y: 12.5 },
+      { name: "CS", x: 74.5, y: 12.5 }, { name: "3V3", x: 83.5, y: 12.5 }, { name: "VIN", x: 93.5, y: 12.5 }, { name: "GND", x: 103.5, y: 12 }
+    ] 
   },
   'wokwi-dht22': {
-    width: 60,
-    height: 80,
-    pins: [{ name: 'VCC', x: 10, y: 80 }, { name: 'SDA', x: 24, y: 80 }, { name: 'NC', x: 38, y: 80 }, { name: 'GND', x: 52, y: 80 }]
+    width: 57.07086614241,
+    height: 116.73070866280351,
+    pins: [{ name: "VCC", x: 15, y: 114.9 }, { name: "SDA", x: 24.5, y: 114.9 }, { name: "NC", x: 34.1, y: 114.9 }, { name: "GND", x: 43.8, y: 114.9 }]
   },
   'wokwi-7segment': { 
     width: 50, 
@@ -196,79 +146,35 @@ export const STATIC_COMPONENT_DATA: Record<string, ComponentSpec> = {
     ] 
   },
   'wokwi-led-ring': { width: 150, height: 150, pins: [{ name: 'GND', x: 75, y: 150 }, { name: 'VCC', x: 65, y: 150 }, { name: 'DIN', x: 55, y: 150 }, { name: 'DOUT', x: 85, y: 150 }] },
-  'wokwi-neopixel': { width: 40, height: 40, pins: [{ name: 'DOUT', x: 5, y: 35 }, { name: 'GND', x: 15, y: 35 }, { name: 'VCC', x: 25, y: 35 }, { name: 'DIN', x: 35, y: 35 }] },
-  'wokwi-neopixel-matrix': { width: 160, height: 160, pins: [{ name: 'DIN', x: 20, y: 160 }, { name: 'VCC', x: 40, y: 160 }, { name: 'GND', x: 60, y: 160 }] },
+  'wokwi-neopixel': { width: 40, height: 40, pins: [{ name: 'DOUT', x: 5, y: 35 }, { name: 'VDD', x: 15, y: 35 }, { name: 'VSS', x: 25, y: 35 }, { name: 'DIN', x: 35, y: 35 }] },
   'wokwi-buzzer': { 
-    width: 50, 
-    height: 50, 
-    pins: [{ name: '2', x: 15, y: 50 }, { name: '1', x: 35, y: 50 }] // 1=Pos, 2=Neg usually
+    width: 64.2519685047,
+    height: 75.590551182,
+    pins: [{ name: "1", x: 27, y: 84 }, { name: "2", x: 37, y: 84 }]
   },
   'wokwi-ky-040': { 
-    width: 60, 
-    height: 70, 
-    pins: [
-      { name: 'CLK', x: 10, y: 70 }, { name: 'DT', x: 20, y: 70 }, { name: 'SW', x: 30, y: 70 }, { name: 'VCC', x: 40, y: 70 }, { name: 'GND', x: 50, y: 70 }
-    ] 
+    width: 116.4661417336665, 
+    height: 70.412598426033, 
+    pins: [{ name: 'CLK', x: 10, y: 70 }, { name: 'DT', x: 20, y: 70 }, { name: 'SW', x: 30, y: 70 }, { name: 'VCC', x: 40, y: 70 }, { name: 'GND', x: 50, y: 70 }] 
   },
-  'wokwi-ir-receiver': { 
-    width: 30, 
-    height: 40, 
-    pins: [{ name: 'OUT', x: 5, y: 40 }, { name: 'GND', x: 15, y: 40 }, { name: 'VCC', x: 25, y: 40 }] 
-  },
-  'wokwi-ir-remote': { width: 100, height: 200, pins: [] }, // Wireless
   'wokwi-pir-motion-sensor': { 
-    width: 80, 
-    height: 80, 
+    width: 90.7086614184, 
+    height: 92.4018897648768, 
     pins: [{ name: 'VCC', x: 20, y: 80 }, { name: 'OUT', x: 40, y: 80 }, { name: 'GND', x: 60, y: 80 }] 
   },
   'wokwi-photoresistor-sensor': { 
-    width: 40, 
-    height: 40, 
-    pins: [{ name: 'AO', x: 5, y: 40 }, { name: 'DO', x: 15, y: 40 }, { name: 'GND', x: 25, y: 40 }, { name: 'VCC', x: 35, y: 40 }] 
-  },
-  'wokwi-ntc-temperature-sensor': { 
-    width: 20, 
-    height: 40, 
-    pins: [{ name: 'A0', x: 5, y: 40 }, { name: 'D0', x: 10, y: 40 }, { name: 'GND', x: 15, y: 40 }, { name: 'VCC', x: 20, y: 40 }] 
-  },
-  'wokwi-gas-sensor': { 
-    width: 60, 
-    height: 60, 
-    pins: [{ name: 'AO', x: 15, y: 60 }, { name: 'DO', x: 25, y: 60 }, { name: 'GND', x: 35, y: 60 }, { name: 'VCC', x: 45, y: 60 }] 
-  },
-  'wokwi-ds1307': { 
-    width: 60, 
-    height: 60, 
-    pins: [{ name: 'DS', x: 10, y: 60 }, { name: 'SCL', x: 20, y: 60 }, { name: 'SDA', x: 30, y: 60 }, { name: 'VCC', x: 40, y: 60 }, { name: 'GND', x: 50, y: 60 }] 
+    width: 173.669291340645, 
+    height: 61.481574803879695, 
+    pins: [{ name: "VCC", x: 172, y: 16 }, { name: "GND", x: 172, y: 26 }, { name: "DO", x: 172, y: 35.8 }, { name: "AO", x: 172, y: 45.5 }] 
   },
   'wokwi-mpu6050': { 
-    width: 60, 
-    height: 40, 
+    width: 81.63779527656, 
+    height: 61.228346457419995, 
     pins: [
-      { name: 'VCC', x: 5, y: 0 }, { name: 'GND', x: 12, y: 0 }, { name: 'SCL', x: 19, y: 0 }, { name: 'SDA', x: 26, y: 0 },
-      { name: 'XDA', x: 33, y: 0 }, { name: 'XCL', x: 40, y: 0 }, { name: 'AD0', x: 47, y: 0 }, { name: 'INT', x: 54, y: 0 }
+      { name: "INT", x: 7.28, y: 5.78 }, { name: "AD0", x: 16.9, y: 5.78 }, { name: "XCL", x: 26.4, y: 5.78 }, { name: "XDA", x: 36, y: 5.78 },
+      { name: "SDA", x: 45.6, y: 5.78 }, { name: "SCL", x: 55.2, y: 5.78 }, { name: "GND", x: 64.8, y: 5.78 }, { name: "VCC", x: 74.4, y: 5.78 }
     ] 
-  },
-  'wokwi-big-sound-sensor': { 
-    width: 60, 
-    height: 30, 
-    pins: [{ name: 'AO', x: 15, y: 30 }, { name: 'GND', x: 30, y: 30 }, { name: 'VCC', x: 45, y: 30 }, { name: 'DO', x: 60, y: 30 }] 
-  },
-  'wokwi-small-sound-sensor': { 
-    width: 60, 
-    height: 30, 
-    pins: [{ name: 'AO', x: 15, y: 30 }, { name: 'GND', x: 30, y: 30 }, { name: 'VCC', x: 45, y: 30 }, { name: 'DO', x: 60, y: 30 }] 
-  },
-  'wokwi-heart-beat-sensor': { 
-    width: 40, 
-    height: 40, 
-    pins: [{ name: 'AO', x: 10, y: 40 }, { name: 'GND', x: 20, y: 40 }, { name: 'VCC', x: 30, y: 40 }] 
-  },
-  'wokwi-flame-sensor': { 
-    width: 40, 
-    height: 30, 
-    pins: [{ name: 'AO', x: 10, y: 30 }, { name: 'GND', x: 20, y: 30 }, { name: 'VCC', x: 30, y: 30 }, { name: 'DO', x: 40, y: 30 }] 
-  },
+  }
 };
 
 export function getComponentDimensions(type: string) {

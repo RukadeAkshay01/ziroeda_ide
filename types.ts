@@ -5,38 +5,23 @@ export type ComponentType =
   | 'wokwi-arduino-mega'
   | 'wokwi-resistor'
   | 'wokwi-led'
-  | 'wokwi-7segment'
-  | 'wokwi-led-ring'
-  | 'wokwi-neopixel'
-  | 'wokwi-neopixel-matrix'
   | 'wokwi-pushbutton'
   | 'wokwi-slide-switch'
-  | 'wokwi-tilt-switch'
   | 'wokwi-potentiometer'
-  | 'wokwi-slide-potentiometer'
-  | 'wokwi-membrane-keypad'
-  | 'wokwi-rotary-dialer'
+  | 'wokwi-dht22'
+  | 'wokwi-hc-sr04'
+  | 'wokwi-pir-motion-sensor'
+  | 'wokwi-photoresistor-sensor'
+  | 'wokwi-mpu6050'
+  | 'wokwi-neopixel'
+  | 'wokwi-led-ring'
+  | 'wokwi-7segment'
   | 'wokwi-buzzer'
   | 'wokwi-servo'
   | 'wokwi-lcd1602'
-  | 'wokwi-lcd2004'
   | 'wokwi-ssd1306'
-  | 'wokwi-dht22'
-  | 'wokwi-hc-sr04'
-  | 'wokwi-analog-joystick'
-  | 'wokwi-ir-receiver'
-  | 'wokwi-ir-remote'
-  | 'wokwi-pir-motion-sensor'
-  | 'wokwi-photoresistor-sensor'
-  | 'wokwi-ntc-temperature-sensor'
-  | 'wokwi-gas-sensor'
-  | 'wokwi-ds1307'
-  | 'wokwi-mpu6050'
-  | 'wokwi-ky-040'
-  | 'wokwi-flame-sensor'
-  | 'wokwi-heart-beat-sensor'
-  | 'wokwi-big-sound-sensor'
-  | 'wokwi-small-sound-sensor';
+  | 'wokwi-membrane-keypad'
+  | 'wokwi-ky-040';
 
 export interface CircuitComponent {
   id: string;
@@ -70,4 +55,12 @@ export interface DesignResponse {
 export interface Point {
   x: number;
   y: number;
+}
+
+export interface DebugLogEntry {
+  id: string;
+  timestamp: number;
+  type: 'request' | 'response' | 'error';
+  summary: string;
+  payload: any;
 }

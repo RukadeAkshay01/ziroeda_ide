@@ -6,8 +6,9 @@ import {
   GRID_SIZE, 
   HUB_X, 
   HUB_Y, 
-  INPUT_GAP, 
-  OUTPUT_GAP, 
+  FIRST_COL_GAP, 
+  COL_SPACING,
+  MAX_PER_COL,
   RESISTOR_GAP, 
   VERTICAL_BUFFER 
 } from "./layoutConfig";
@@ -36,6 +37,15 @@ function getPinOffset(type: string, pinName: string): { x: number, y: number } {
   return { x: pin.x, y: pin.y };
 }
 
+interface LayoutItem {
+    comp: CircuitComponent;
+    idealY: number;
+    height: number;
+    width: number;
+    hasResistor?: boolean;
+    resistorId?: string;
+}
+
 /**
  * Main Layout Engine
  */
@@ -45,10 +55,10 @@ export const optimizePlacement = async (
   existingComponents: CircuitComponent[] = [] 
 ): Promise<CircuitComponent[]> => {
   
-  // 1. Identify Components
+  // 1. Identify Hub
   const hub = components.find(c => TYPE_CATEGORIES[c.type] === 'HUB');
   
-  // If no hub, return components as-is
+  // If no hub, return components as-is (or maybe just grid them, but as-is is safer)
   if (!hub) return components;
 
   // Clone to avoid mutation side-effects during calculation
@@ -58,41 +68,13 @@ export const optimizePlacement = async (
   // 2. Place Hub Center
   layoutHub.x = HUB_X;
   layoutHub.y = HUB_Y;
+  const hubHeight = STATIC_COMPONENT_DATA[layoutHub.type]?.height || 200;
+  const hubWidth = STATIC_COMPONENT_DATA[layoutHub.type]?.width || 300;
 
   // 3. Filter Categories
   const passives = layout.filter(c => TYPE_CATEGORIES[c.type] === 'PASSIVE');
   const inputs = layout.filter(c => TYPE_CATEGORIES[c.type] === 'INPUT');
   const outputs = layout.filter(c => TYPE_CATEGORIES[c.type] === 'OUTPUT');
-
-  // Map to track calculated Y positions to detect overlaps
-  const occupiedSlots: { x: number, yStart: number, yEnd: number }[] = [];
-
-  // Register the Hub's position
-  occupiedSlots.push({ 
-      x: HUB_X, 
-      yStart: HUB_Y, 
-      yEnd: HUB_Y + (STATIC_COMPONENT_DATA[layoutHub.type]?.height || 240) 
-  });
-
-  const checkOverlapAndShift = (x: number, y: number, height: number): number => {
-    let safeY = y;
-    let collision = true;
-    const SAFETY_PAD = VERTICAL_BUFFER;
-
-    while (collision) {
-      collision = false;
-      for (const slot of occupiedSlots) {
-        if (Math.abs(slot.x - x) < 200) {
-           if (safeY < slot.yEnd + SAFETY_PAD && (safeY + height) > slot.yStart - SAFETY_PAD) {
-             collision = true;
-             safeY = slot.yEnd + SAFETY_PAD;
-           }
-        }
-      }
-    }
-    occupiedSlots.push({ x, yStart: safeY, yEnd: safeY + height });
-    return safeY;
-  };
 
   // Helper: Find Y-coordinate of the pin on the Hub that this component connects to.
   const findHubPinY = (compId: string): number | null => {
@@ -137,85 +119,131 @@ export const optimizePlacement = async (
     return null;
   };
 
-  // --------------------------------------------------------------------------
-  // 4. Place Outputs (Right Side)
-  // --------------------------------------------------------------------------
-  const sortedOutputs = outputs.map(comp => ({ comp, targetY: findHubPinY(comp.id) || HUB_Y }));
-  sortedOutputs.sort((a, b) => a.targetY - b.targetY);
+  /**
+   * Distributes components in multiple columns (Grid) to prevent infinite vertical growth.
+   * @param comps List of components to place
+   * @param startX The starting X coordinate (closest to hub)
+   * @param direction -1 for Left (Inputs), 1 for Right (Outputs)
+   */
+  const distributeSide = (comps: CircuitComponent[], startX: number, direction: number) => {
+      if (comps.length === 0) return;
 
-  sortedOutputs.forEach(({ comp, targetY }) => {
-     const compSpec = STATIC_COMPONENT_DATA[comp.type] || { width: 100, height: 100, pins: [] };
-     
-     const hasResistor = connections.some(conn => 
-       (conn[0].startsWith(comp.id) || conn[1].startsWith(comp.id)) && 
-       passives.some(p => conn[0].startsWith(p.id) || conn[1].startsWith(p.id))
-     );
-
-     const hubWidth = STATIC_COMPONENT_DATA[layoutHub.type]?.width || 330;
-     const baseX = HUB_X + hubWidth + OUTPUT_GAP + (hasResistor ? RESISTOR_GAP : 0);
-     const pinOffset = compSpec.height / 2;
-     let finalY = targetY - pinOffset;
-     finalY = Math.round(finalY / GRID_SIZE) * GRID_SIZE;
-     finalY = checkOverlapAndShift(baseX, finalY, compSpec.height);
-     
-     comp.x = baseX;
-     comp.y = finalY;
-
-     if (hasResistor) {
-         const rConn = connections.find(conn => 
+      const items: LayoutItem[] = comps.map(comp => {
+          const spec = STATIC_COMPONENT_DATA[comp.type] || { width: 100, height: 100 };
+          const idealY = findHubPinY(comp.id) || (HUB_Y + hubHeight / 2);
+          
+          // Check for resistor
+          let resistorId: string | undefined;
+          const rConn = connections.find(conn => 
             (conn[0].startsWith(comp.id) && passives.some(p => conn[1].startsWith(p.id))) ||
             (conn[1].startsWith(comp.id) && passives.some(p => conn[0].startsWith(p.id)))
-         );
-         if (rConn) {
-             const rId = rConn[0].startsWith(comp.id) ? rConn[1].split(':')[0] : rConn[0].split(':')[0];
-             const resistor = layout.find(r => r.id === rId);
-             if (resistor) {
-                 resistor.x = baseX - RESISTOR_GAP + 20; 
-                 resistor.y = finalY + (compSpec.height / 2) - 10;
-                 resistor.rotation = 0;
-                 occupiedSlots.push({ x: resistor.x, yStart: resistor.y, yEnd: resistor.y + 20 });
-             }
-         }
-     }
-  });
+          );
+          if (rConn) {
+              resistorId = rConn[0].startsWith(comp.id) ? rConn[1].split(':')[0] : rConn[0].split(':')[0];
+          }
 
-  // --------------------------------------------------------------------------
-  // 5. Place Inputs (Left Side)
-  // --------------------------------------------------------------------------
-  const sortedInputs = inputs.map(comp => ({ comp, targetY: findHubPinY(comp.id) || HUB_Y }));
-  sortedInputs.sort((a, b) => a.targetY - b.targetY);
+          return {
+              comp,
+              idealY,
+              height: spec.height,
+              width: spec.width,
+              hasResistor: !!resistorId,
+              resistorId
+          };
+      });
 
-  sortedInputs.forEach(({ comp, targetY }) => {
-    const compSpec = STATIC_COMPONENT_DATA[comp.type] || { width: 100, height: 100, pins: [] };
-    const baseX = HUB_X - INPUT_GAP;
-    const pinOffset = compSpec.height / 2;
-    let finalY = targetY - pinOffset;
-    
-    finalY = Math.round(finalY / GRID_SIZE) * GRID_SIZE;
-    finalY = checkOverlapAndShift(baseX, finalY, compSpec.height);
+      // 1. Sort by ideal Y
+      items.sort((a, b) => a.idealY - b.idealY);
 
-    comp.x = baseX;
-    comp.y = finalY;
-  });
+      // 2. Chunk into columns
+      // If we have 10 items and MAX_PER_COL=5, we get 2 cols.
+      // Col 0: items 0-4 (Top pins)
+      // Col 1: items 5-9 (Bottom pins)
+      // We place Col 0 closest to Hub? Or Col 1?
+      // Usually, we want the shortest wires.
+      // Top pins (low Y) are usually Digital. Bottom pins (high Y) are Analog/Power.
+      // If we split vertically, we just place chunks into columns moving OUTWARDS.
+      
+      const chunkedItems: LayoutItem[][] = [];
+      for (let i = 0; i < items.length; i += MAX_PER_COL) {
+          chunkedItems.push(items.slice(i, i + MAX_PER_COL));
+      }
 
-  // --------------------------------------------------------------------------
-  // 6. Cleanup Remaining Passives
-  // --------------------------------------------------------------------------
-  let orphanY = HUB_Y + 300;
+      chunkedItems.forEach((chunk, colIndex) => {
+           // Calculate Column X
+           // Col 0 is closest to hub: startX
+           // Col 1 is further: startX + (dir * COL_SPACING)
+           const colX = startX + (colIndex * COL_SPACING * direction);
+           
+           // Calculate Vertical Center for this chunk
+           // We simply stack them with buffer
+           let stackHeight = 0;
+           chunk.forEach((item, idx) => {
+              if (idx > 0) stackHeight += VERTICAL_BUFFER;
+              stackHeight += item.height;
+           });
+           
+           // Center the stack relative to Hub Y
+           const hubCenterY = HUB_Y + (hubHeight / 2);
+           const startY = hubCenterY - (stackHeight / 2);
+
+           let currentY = startY;
+
+           chunk.forEach(item => {
+                // Snap to Grid
+                item.comp.x = Math.round(colX / GRID_SIZE) * GRID_SIZE;
+                item.comp.y = Math.round(currentY / GRID_SIZE) * GRID_SIZE;
+
+                // Handle Resistor Placement
+                if (item.hasResistor && item.resistorId) {
+                    const res = layout.find(r => r.id === item.resistorId);
+                    if (res) {
+                        const rSpec = STATIC_COMPONENT_DATA[res.type] || { width: 60, height: 20 };
+                        
+                        if (direction === 1) { 
+                            // Right Side (Outputs): Hub -> Resistor -> Component
+                            // Resistor goes between Hub and Comp.
+                            // X = CompX - gap
+                            res.x = item.comp.x - RESISTOR_GAP;
+                        } else {
+                            // Left Side (Inputs): Component -> Resistor -> Hub
+                            // Resistor goes between Comp and Hub.
+                            // X = CompX + Width + Gap
+                            res.x = item.comp.x + item.width + 40; // Small offset
+                        }
+                        
+                        res.y = item.comp.y + (item.height / 2) - (rSpec.height / 2);
+                        res.rotation = 0;
+                    }
+                }
+
+                currentY += item.height + VERTICAL_BUFFER;
+           });
+      });
+  };
+
+  // 4. Distribute Inputs (Left of Hub)
+  // startX is FIRST_COL_GAP to the left of Hub Center? No, left of Hub Edge.
+  // Hub is at HUB_X.
+  distributeSide(inputs, HUB_X - FIRST_COL_GAP, -1);
+
+  // 5. Distribute Outputs (Right of Hub)
+  distributeSide(outputs, HUB_X + hubWidth + FIRST_COL_GAP, 1);
+
+  // 6. Cleanup Orphan Passives
+  let orphanY = HUB_Y + hubHeight + 100;
   passives.forEach(r => {
-      if (r.x === 0 && r.y === 0) {
+      if (r.x === 0 && r.y === 0) { 
           r.x = HUB_X + 100;
           r.y = orphanY;
           orphanY += 40;
       }
   });
 
-  // --------------------------------------------------------------------------
   // 7. Cleanup Unknown Components
-  // --------------------------------------------------------------------------
   const unknownComponents = layout.filter(c => !TYPE_CATEGORIES[c.type]);
-  let unknownX = HUB_X - INPUT_GAP;
-  let unknownY = HUB_Y + 400; 
+  let unknownX = HUB_X - FIRST_COL_GAP;
+  let unknownY = HUB_Y + hubHeight + 200; 
   
   unknownComponents.forEach(c => {
       if (c.x === 0 && c.y === 0) {

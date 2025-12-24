@@ -6,12 +6,12 @@
 
 import { CircuitComponent, WokwiConnection, Point } from '../types';
 import { getComponentSpec, getComponentDimensions } from './static-component-data';
-import { rotateVector, getManhattanPoints } from './mathUtils';
+import { rotateVector } from './mathUtils';
 
 // Re-export for consumers
 export { pointsToSvgPath } from './mathUtils';
 
-const STUB_BASE = 20;           // Base length for wire "stubs" emerging from pins
+const STUB_BASE = 30;           // Base length for wire "stubs" emerging from pins
 const STUB_STEP = 12;           // Extra spacing added to parallel wires to create a bus effect
 
 interface Vector { x: number; y: number }
@@ -47,7 +47,19 @@ const PIN_ALIASES: Record<string, Record<string, string>> = {
      'S': 'IN', 'SIGNAL': 'IN', 'SIG': 'IN'
   },
   'wokwi-servo': {
-     'SIGNAL': 'PWM', 'SIG': 'PWM', 'PULSE': 'PWM', 'DATA': 'PWM'
+     'SIGNAL': 'PWM', 'SIG': 'PWM', 'PULSE': 'PWM', 'DATA': 'PWM',
+     '5V': 'VCC', 'POS': 'VCC', '+': 'VCC', 'POWER': 'VCC',
+     '-': 'GND', 'NEG': 'GND'
+  },
+  'wokwi-lcd1602': {
+     'VCC': 'VDD', '5V': 'VDD', '+': 'VDD',
+     'GND': 'VSS', '-': 'VSS',
+     'LED+': 'A', 'LED-': 'K'
+  },
+  'wokwi-lcd2004': {
+     'VCC': 'VDD', '5V': 'VDD', '+': 'VDD',
+     'GND': 'VSS', '-': 'VSS',
+     'LED+': 'A', 'LED-': 'K'
   },
   'wokwi-ky-040': {
       'S1': 'CLK', 'S2': 'DT', 'KEY': 'SW'
@@ -252,8 +264,8 @@ export function getWireColor(connection: string[]): string {
     'yellow': '#eab308', 'orange': '#f97316', 'purple': '#a855f7', 'white': '#e2e8f0'
   };
   if (explicitColor && colorMap[explicitColor]) return colorMap[explicitColor];
-  if (context.includes('GND')) return colorMap['black'];
-  if (context.includes('5V') || context.includes('VCC')) return colorMap['red'];
+  if (context.includes('GND') || context.includes('VSS')) return colorMap['black'];
+  if (context.includes('5V') || context.includes('VCC') || context.includes('VDD')) return colorMap['red'];
   return '#22c55e'; 
 }
 
@@ -287,8 +299,12 @@ function computeDynamicStubs(
 
     sideGroups.forEach((pins, key) => {
         const [, side] = key.split(':');
+        // Sort pins to minimize crossing:
+        // Top/Bottom edges sorted by X.
+        // Left/Right edges sorted by Y.
         if (side === 'T' || side === 'B') pins.sort((a, b) => a.x - b.x);
         else pins.sort((a, b) => a.y - b.y);
+        
         pins.forEach((p, index) => {
             stubLengths.set(`${key.split(':')[0]}:${p.name}`, STUB_BASE + (index * STUB_STEP));
         });
@@ -323,10 +339,49 @@ export function calculateDefaultRoutes(
           const sLen = stubLengths.get(`${srcId}:${srcPinName}`) || STUB_BASE;
           const eLen = stubLengths.get(`${tgtId}:${tgtPinName}`) || STUB_BASE;
 
+          // Calculate Stub Tips
           const sStub = { x: start.x + startVec.x * sLen, y: start.y + startVec.y * sLen };
           const eStub = { x: end.x + endVec.x * eLen, y: end.y + endVec.y * eLen };
 
-          routes.set(`${idx}`, [start, ...getManhattanPoints(sStub, eStub), end]);
+          // Determine the vertical channel (MidX)
+          let midX = (sStub.x + eStub.x) / 2;
+
+          // --- SMART ROUTING PREVENT U-TURNS ---
+          // Prevent horizontal overlapping. If a pin exits Right, the vertical turn 
+          // channel MUST be at least as far right as the stub tip. 
+          // If a pin exits Left, the channel MUST be at least as far left as the stub tip.
+          
+          // 1. Source Constraints
+          if (Math.abs(startVec.x) > 0.5) { 
+             if (startVec.x > 0) midX = Math.max(midX, sStub.x);
+             else midX = Math.min(midX, sStub.x);
+          }
+
+          // 2. Target Constraints
+          if (Math.abs(endVec.x) > 0.5) {
+             if (endVec.x > 0) midX = Math.max(midX, eStub.x);
+             else midX = Math.min(midX, eStub.x);
+          }
+
+          // Build path points: Start -> SourceStub -> Vertical Turn -> TargetStub -> End
+          const rawPoints = [
+              start, 
+              sStub, 
+              { x: midX, y: sStub.y }, 
+              { x: midX, y: eStub.y }, 
+              eStub, 
+              end
+          ];
+
+          // Filter out zero-length segments to keep the router clean
+          const points = rawPoints.filter((p, i) => {
+            if (i === 0) return true;
+            const prev = rawPoints[i-1];
+            // Filter if point is essentially identical to previous point
+            return !(Math.abs(p.x - prev.x) < 0.5 && Math.abs(p.y - prev.y) < 0.5);
+          });
+
+          routes.set(`${idx}`, points);
       }
   });
   return routes;
@@ -342,6 +397,9 @@ export function updateRouteWithDrag(
     lockedOrientation: 'H' | 'V'
 ): Point[] {
     const newPoints = [...originalPoints];
+    // Safety check indices
+    if (segmentIndex < 0 || segmentIndex >= newPoints.length - 1) return newPoints;
+
     if (lockedOrientation === 'H') {
         newPoints[segmentIndex] = { ...newPoints[segmentIndex], y: mousePos.y };
         newPoints[segmentIndex + 1] = { ...newPoints[segmentIndex + 1], y: mousePos.y };
