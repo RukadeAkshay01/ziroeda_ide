@@ -9,9 +9,8 @@ import CodeEditor from './components/CodeEditor';
 import PropertiesPanel from './components/PropertiesPanel';
 import BillOfMaterials from './components/BillOfMaterials';
 import SerialMonitor from './components/SerialMonitor';
-import DebugLogPanel from './components/DebugLogPanel';
 import { generateCircuitDesign } from './services/geminiService';
-import { ChatMessage, CircuitComponent, WokwiConnection, DebugLogEntry } from './types';
+import { ChatMessage, CircuitComponent, WokwiConnection } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageSquare } from 'lucide-react';
 
@@ -52,11 +51,7 @@ const App: React.FC = () => {
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
   const [isBOMOpen, setIsBOMOpen] = useState(false); 
   const [isSerialMonitorOpen, setIsSerialMonitorOpen] = useState(false);
-  const [isDebugOpen, setIsDebugOpen] = useState(false);
   
-  // Debug Logs State
-  const [debugLogs, setDebugLogs] = useState<DebugLogEntry[]>([]);
-
   // Responsive UI State
   const [isLibraryOpen, setIsLibraryOpen] = useState(true);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
@@ -150,28 +145,8 @@ const App: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      // Call service, which now returns debug info too
-      const { design, rawRequest, rawResponse } = await generateCircuitDesign(updatedHistory, components, connections);
-
-      // Log Request
-      const reqLog: DebugLogEntry = {
-          id: uuidv4(),
-          timestamp: Date.now(),
-          type: 'request',
-          summary: `Sent "${text.slice(0, 30)}..." with ${components.length} components context.`,
-          payload: rawRequest
-      };
-      
-      // Log Response
-      const resLog: DebugLogEntry = {
-          id: uuidv4(),
-          timestamp: Date.now(),
-          type: 'response',
-          summary: `Received ${design.components.length} components. Code length: ${design.arduinoCode?.length || 0} chars.`,
-          payload: JSON.parse(rawResponse) // It's a JSON string from the service
-      };
-
-      setDebugLogs(prev => [...prev, reqLog, resLog]);
+      // Call service
+      const { design } = await generateCircuitDesign(updatedHistory, components, connections);
 
       if (design.components && design.components.length > 0) {
         setComponents(design.components);
@@ -196,15 +171,6 @@ const App: React.FC = () => {
         isError: true
       };
       setMessages(prev => [...prev, errorMsg]);
-
-      // Log Error
-      setDebugLogs(prev => [...prev, {
-          id: uuidv4(),
-          timestamp: Date.now(),
-          type: 'error',
-          summary: 'Gemini API Error',
-          payload: error.message || error
-      }]);
     } finally {
       setIsProcessing(false);
     }
@@ -222,7 +188,6 @@ const App: React.FC = () => {
       text: "Canvas cleared! I'm ready for a fresh project. What's the new plan?"
     }]);
     resetHistory();
-    setDebugLogs([]); // Clear logs too? Or keep history? Let's clear for fresh start.
   };
 
   const handleShare = () => {
@@ -272,12 +237,10 @@ const App: React.FC = () => {
           onViewSchematic={() => alert("Schematic View: Feature Coming Soon")}
           onViewBOM={() => setIsBOMOpen(prev => !prev)} 
           onShare={handleShare}
-          onToggleDebug={() => setIsDebugOpen(prev => !prev)}
           isSimulating={isSimulating}
           isCompiling={isCompiling}
           toggleLibrary={() => setIsLibraryOpen(!isLibraryOpen)}
           isLibraryOpen={isLibraryOpen}
-          isDebugOpen={isDebugOpen}
         />
         
         <div className="flex-1 relative bg-grid overflow-hidden">
@@ -393,13 +356,6 @@ const App: React.FC = () => {
         onSend={sendSerialInput}
         onClear={clearSerialOutput}
         isSimulating={isSimulating}
-      />
-
-      <DebugLogPanel 
-        logs={debugLogs}
-        isOpen={isDebugOpen}
-        onClose={() => setIsDebugOpen(false)}
-        onClear={() => setDebugLogs([])}
       />
 
     </div>

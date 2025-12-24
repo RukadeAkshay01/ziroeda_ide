@@ -10,8 +10,7 @@ import {
   Workflow, 
   ClipboardList, 
   Loader2,
-  Share2,
-  Bug
+  Share2
 } from 'lucide-react';
 
 interface UpperToolbarProps {
@@ -22,12 +21,10 @@ interface UpperToolbarProps {
   onViewSchematic: () => void;
   onViewBOM: () => void;
   onShare: () => void;
-  onToggleDebug: () => void;
   isSimulating: boolean;
   isCompiling: boolean;
   toggleLibrary: () => void;
   isLibraryOpen: boolean;
-  isDebugOpen: boolean;
 }
 
 const UpperToolbar: React.FC<UpperToolbarProps> = ({ 
@@ -38,12 +35,10 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
   onViewSchematic,
   onViewBOM,
   onShare,
-  onToggleDebug,
   isSimulating, 
   isCompiling,
   toggleLibrary,
-  isLibraryOpen,
-  isDebugOpen
+  isLibraryOpen
 }) => {
 
   const ToolbarButton = ({ 
@@ -143,14 +138,6 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
           icon={Monitor} 
           label="Serial" 
           onClick={onViewSerialMonitor} 
-        />
-
-        <ToolbarButton 
-          icon={Bug} 
-          label="Debug" 
-          onClick={onToggleDebug} 
-          active={isDebugOpen}
-          colorClass="text-yellow-500/80 hover:text-yellow-400"
         />
 
         <ToolbarButton 
