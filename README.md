@@ -1,4 +1,4 @@
-# ZiroEDA
+# ZiroEDA IDE
 
 An intelligent, web-based electronic circuit design platform that uses Google Gemini AI to translate natural language descriptions into functional visual circuits using Wokwi elements.
 
