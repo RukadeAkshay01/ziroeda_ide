@@ -299,11 +299,11 @@ const App: React.FC = () => {
   const selectedComponent = components.find(c => c.id === selectedComponentId);
 
   if (authLoading) {
-    return <div className="flex h-screen w-screen items-center justify-center bg-dark-900 text-white">Loading...</div>;
+    return <div className="flex h-[100dvh] w-screen items-center justify-center bg-dark-900 text-white">Loading...</div>;
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-dark-900 text-white font-sans relative">
+    <div className="flex h-[100dvh] w-screen overflow-hidden bg-dark-900 text-white font-sans relative">
       {!user && <LoginOverlay />}
 
       {/* --- MOBILE: Library Drawer (90% from Left) --- */}

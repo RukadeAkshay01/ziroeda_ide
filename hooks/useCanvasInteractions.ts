@@ -15,6 +15,7 @@ interface UseCanvasInteractionsProps {
   onComponentMove: (id: string, x: number, y: number) => void;
   onDragEnd?: () => void;
   onConnectionCreated?: (sourceId: string, sourcePin: string, targetId: string, targetPin: string) => void;
+  zoomAtPoint: (x: number, y: number, scale: number) => void;
 }
 
 export const useCanvasInteractions = ({
@@ -28,7 +29,8 @@ export const useCanvasInteractions = ({
   onSelectComponent,
   onComponentMove,
   onDragEnd,
-  onConnectionCreated
+  onConnectionCreated,
+  zoomAtPoint
 }: UseCanvasInteractionsProps) => {
 
   const lastMousePos = useRef({ x: 0, y: 0 });
@@ -36,6 +38,10 @@ export const useCanvasInteractions = ({
   const componentStartPos = useRef({ x: 0, y: 0 });
   const wireStartPoints = useRef<Point[]>([]);
   const hasMovedRef = useRef(false);
+
+  // Touch State
+  const lastTouchDistance = useRef<number | null>(null);
+  const isPinching = useRef(false);
 
   // State
   const [dragMode, setDragMode] = useState<DragMode>('IDLE');
@@ -155,9 +161,9 @@ export const useCanvasInteractions = ({
     hasMovedRef.current = false;
   };
 
-  const handlePinClick = (e: React.MouseEvent, compId: string, pinName: string, x: number, y: number) => {
+  const handlePinClick = (e: React.MouseEvent | React.TouchEvent, compId: string, pinName: string, x: number, y: number) => {
     e.stopPropagation();
-    e.preventDefault();
+    // e.preventDefault(); // Removed to allow scrolling if needed, handled in touch handlers
     if (drawingState) {
       if (drawingState.componentId !== compId) {
         onConnectionCreated?.(drawingState.componentId, drawingState.pinName, compId, pinName);
@@ -175,6 +181,122 @@ export const useCanvasInteractions = ({
     }
   };
 
+  // --- Touch Handlers ---
+
+  const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const getCenter = (touch1: React.Touch, touch2: React.Touch) => {
+    return {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2
+    };
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Prevent default to stop scrolling/zooming by browser
+    // e.preventDefault(); // Handled by CSS touch-action: none
+
+    if (e.touches.length === 2) {
+      // Pinch Zoom Start
+      isPinching.current = true;
+      lastTouchDistance.current = getDistance(e.touches[0], e.touches[1]);
+      setDragMode('IDLE'); // Stop panning/dragging if zooming
+    } else if (e.touches.length === 1) {
+      // Pan or Drag Start
+      isPinching.current = false;
+      const touch = e.touches[0];
+
+      // Check if touching a component (simple hit test or rely on component touch handler)
+      // For now, assume PAN unless component handler fired
+      if (dragMode === 'IDLE') {
+        setDragMode('PAN');
+        lastMousePos.current = { x: touch.clientX, y: touch.clientY };
+      }
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && isPinching.current) {
+      // Pinch Zoom
+      const dist = getDistance(e.touches[0], e.touches[1]);
+      if (lastTouchDistance.current) {
+        const delta = dist - lastTouchDistance.current;
+        const center = getCenter(e.touches[0], e.touches[1]);
+
+        // Zoom sensitivity
+        const zoomFactor = 0.005;
+        const newScale = transform.scale + delta * zoomFactor;
+
+        zoomAtPoint(center.x, center.y, newScale);
+      }
+      lastTouchDistance.current = dist;
+    } else if (e.touches.length === 1 && !isPinching.current) {
+      // Pan or Drag
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - lastMousePos.current.x;
+      const deltaY = touch.clientY - lastMousePos.current.y;
+      lastMousePos.current = { x: touch.clientX, y: touch.clientY };
+
+      const canvasCoords = getCanvasCoords(touch.clientX, touch.clientY);
+      setMousePos(canvasCoords);
+
+      if (dragMode === 'PAN') {
+        pan(deltaX, deltaY);
+      } else if (dragMode === 'COMPONENT' && draggedComponentId) {
+        hasMovedRef.current = true;
+        const totalDeltaX = canvasCoords.x - dragStartCanvasPos.current.x;
+        const totalDeltaY = canvasCoords.y - dragStartCanvasPos.current.y;
+
+        onComponentMove(
+          draggedComponentId,
+          componentStartPos.current.x + totalDeltaX,
+          componentStartPos.current.y + totalDeltaY
+        );
+      }
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      isPinching.current = false;
+      lastTouchDistance.current = null;
+    }
+
+    if (e.touches.length === 0) {
+      if (dragMode === 'COMPONENT' && hasMovedRef.current && onDragEnd) {
+        onDragEnd();
+      }
+      setDragMode('IDLE');
+      setDraggedComponentId(null);
+      hasMovedRef.current = false;
+    }
+  };
+
+  // Component Touch Handler (to be attached to components)
+  const handleComponentTouchStart = (e: React.TouchEvent, id: string) => {
+    e.stopPropagation();
+    if (e.touches.length !== 1) return;
+
+    const touch = e.touches[0];
+    onSelectComponent(id);
+    setDragMode('COMPONENT');
+    setDraggedComponentId(id);
+    hasMovedRef.current = false;
+    lastMousePos.current = { x: touch.clientX, y: touch.clientY };
+
+    const canvasCoords = getCanvasCoords(touch.clientX, touch.clientY);
+    dragStartCanvasPos.current = canvasCoords;
+
+    const component = components.find(c => c.id === id);
+    if (component) {
+      componentStartPos.current = { x: component.x, y: component.y };
+    }
+  };
+
   return {
     dragMode,
     draggedComponentId,
@@ -189,7 +311,12 @@ export const useCanvasInteractions = ({
       handleWireHandleMouseDown,
       handleMouseMove,
       handleMouseUp,
-      handlePinClick
+      handlePinClick,
+      // Touch Handlers
+      handleTouchStart,
+      handleTouchMove,
+      handleTouchEnd,
+      handleComponentTouchStart
     }
   };
 };

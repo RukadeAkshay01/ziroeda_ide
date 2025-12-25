@@ -60,7 +60,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
   }, [components]);
 
   // 1. Core Canvas Logic Hooks
-  const { transform, handleWheel, getCanvasCoords, pan, zoomToFit } = useCanvasTransform(containerRef);
+  const { transform, handleWheel, getCanvasCoords, pan, zoomToFit, zoomAtPoint } = useCanvasTransform(containerRef);
   const { layoutData } = useComponentMeasurement(components, componentRefs);
   const { wireRoutes, setWireRoutes } = useWireRouting(components, connections, layoutData);
 
@@ -99,7 +99,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
     onSelectComponent,
     onComponentMove,
     onDragEnd,
-    onConnectionCreated
+    onConnectionCreated,
+    zoomAtPoint
   });
 
   // 3. Propagate Simulation States (Legacy - now handled by updateVisuals)
@@ -119,13 +120,17 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
       style={{
         backgroundImage: 'radial-gradient(circle, rgba(255, 255, 255, 0.3) 1.5px, transparent 1.5px)',
         backgroundSize: `${24 * transform.scale}px ${24 * transform.scale}px`,
-        backgroundPosition: `${transform.x}px ${transform.y}px`
+        backgroundPosition: `${transform.x}px ${transform.y}px`,
+        touchAction: 'none'
       }}
       onWheel={handleWheel}
       onMouseDown={handlers.handleMouseDown}
       onMouseMove={handlers.handleMouseMove}
       onMouseUp={handlers.handleMouseUp}
       onMouseLeave={handlers.handleMouseUp}
+      onTouchStart={handlers.handleTouchStart}
+      onTouchMove={handlers.handleTouchMove}
+      onTouchEnd={handlers.handleTouchEnd}
       onContextMenu={(e) => e.preventDefault()}
     >
       {isLoading && (
