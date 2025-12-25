@@ -168,6 +168,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
           draggedComponentId={draggedComponentId}
           selectedComponentId={selectedComponentId}
           onComponentMouseDown={handlers.handleComponentMouseDown}
+          onComponentTouchStart={handlers.handleComponentTouchStart}
           setComponentRef={setComponentRef}
         />
 

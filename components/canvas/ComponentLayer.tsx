@@ -10,6 +10,7 @@ interface ComponentLayerProps {
   draggedComponentId: string | null;
   selectedComponentId: string | null;
   onComponentMouseDown: (e: React.MouseEvent, id: string) => void;
+  onComponentTouchStart?: (e: React.TouchEvent, id: string) => void;
   setComponentRef: (id: string) => (el: HTMLElement | null) => void;
 }
 
@@ -19,6 +20,7 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
   draggedComponentId,
   selectedComponentId,
   onComponentMouseDown,
+  onComponentTouchStart,
   setComponentRef
 }) => {
   return (
@@ -34,6 +36,7 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
           <div
             key={comp.id}
             onMouseDown={(e) => onComponentMouseDown(e, comp.id)}
+            onTouchStart={(e) => onComponentTouchStart?.(e, comp.id)}
             className={`absolute group cursor-move ${isDraggingThis ? '' : 'transition-all duration-500 ease-in-out'}`}
             style={{
               left: `${comp.x}px`,
@@ -45,14 +48,14 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
             }}
           >
             {isSelected && (
-              <div 
+              <div
                 className="absolute -inset-2 border-2 border-cyan-400 rounded-lg pointer-events-none animate-pulse shadow-[0_0_20px_rgba(34,211,238,0.3)]"
                 style={{ zIndex: -1 }}
               />
             )}
-            <div 
+            <div
               className="absolute -top-8 left-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap border border-slate-700"
-              style={{ transform: `translateX(-50%) rotate(${-rotation}deg) scaleX(${flipX}) scaleY(${flipY})` }} 
+              style={{ transform: `translateX(-50%) rotate(${-rotation}deg) scaleX(${flipX}) scaleY(${flipY})` }}
             >
               {comp.label || comp.type}
             </div>
