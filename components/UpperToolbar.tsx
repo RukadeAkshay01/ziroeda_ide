@@ -25,6 +25,8 @@ interface UpperToolbarProps {
   isCompiling: boolean;
   toggleLibrary: () => void;
   isLibraryOpen: boolean;
+  saveStatus?: 'saved' | 'saving' | 'unsaved' | 'error';
+  lastSavedAt?: Date | null;
 }
 
 const UpperToolbar: React.FC<UpperToolbarProps> = ({
@@ -38,7 +40,9 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
   isSimulating,
   isCompiling,
   toggleLibrary,
-  isLibraryOpen
+  isLibraryOpen,
+  saveStatus,
+  lastSavedAt
 }) => {
 
   const ToolbarButton = ({
@@ -149,6 +153,25 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
           label="Share"
           onClick={onShare}
         />
+
+        {/* Save Status Indicator */}
+        <div className="hidden md:flex flex-col items-end justify-center ml-4 min-w-[100px]">
+          <div className="flex items-center gap-2">
+            {saveStatus === 'saving' && <Loader2 className="w-3 h-3 text-brand-400 animate-spin" />}
+            {saveStatus === 'saved' && <span className="w-2 h-2 bg-green-500 rounded-full" />}
+            {saveStatus === 'error' && <span className="w-2 h-2 bg-red-500 rounded-full" />}
+            <span className="text-xs text-gray-400 font-medium">
+              {saveStatus === 'saving' ? 'Saving...' :
+                saveStatus === 'saved' ? 'Saved' :
+                  saveStatus === 'error' ? 'Error' : 'Unsaved'}
+            </span>
+          </div>
+          {lastSavedAt && saveStatus === 'saved' && (
+            <span className="text-[10px] text-gray-600">
+              {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

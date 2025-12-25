@@ -15,11 +15,33 @@ import { ChatMessage, CircuitComponent, WokwiConnection } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageSquare } from 'lucide-react';
 
+import { auth } from './services/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import LoginOverlay from './components/LoginOverlay';
+
 import { useCircuitHistory } from './hooks/useCircuitHistory';
 import { useSimulationRunner } from './hooks/useSimulationRunner';
 import { useComponentActions } from './hooks/useComponentActions';
+import { saveProject, loadProject } from './services/supabase';
+
+import { useAutosave } from './hooks/useAutosave';
 
 const App: React.FC = () => {
+  // Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Project State
+  const [projectId, setProjectId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'intro',
     role: 'assistant',
@@ -30,6 +52,16 @@ const App: React.FC = () => {
   const [components, setComponents] = useState<CircuitComponent[]>([]);
   const [connections, setConnections] = useState<WokwiConnection[]>([]);
   const [arduinoCode, setArduinoCode] = useState<string>('');
+
+  // Autosave Hook
+  const { saveStatus, lastSavedAt } = useAutosave({
+    components,
+    connections,
+    code: arduinoCode,
+    user,
+    projectId,
+    setProjectId
+  });
 
   // Hooks
   const { historyIndex, historyLength, saveToHistory, undo, redo, resetHistory } = useCircuitHistory();
@@ -142,7 +174,43 @@ const App: React.FC = () => {
     }
   };
 
-  // --- AI Interaction ---
+  // Handle URL Prompt & Project Loading
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const prompt = params.get('prompt');
+    const urlProjectId = params.get('projectId');
+
+    if (prompt) {
+      // Send the message
+      handleSendMessage(prompt);
+
+      // Clean up the URL (remove prompt but keep projectId if needed, though usually we load project first)
+      const newUrl = window.location.pathname + (urlProjectId ? `?projectId=${urlProjectId}` : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+
+    if (urlProjectId) {
+      const fetchProject = async () => {
+        try {
+          const project = await loadProject(urlProjectId);
+          if (project && project.design) {
+            setComponents(project.design.components || []);
+            setConnections(project.design.connections || []);
+            setArduinoCode(project.design.code || '');
+            setProjectId(urlProjectId);
+
+            // Add to history
+            saveToHistory(project.design.components || [], project.design.connections || []);
+          }
+        } catch (error) {
+          console.error("Failed to load project:", error);
+          alert("Failed to load project. It might not exist or you don't have permission.");
+        }
+      };
+      fetchProject();
+    }
+  }, []); // Run only once on mount
+
   const handleSendMessage = async (text: string) => {
     const userMsg: ChatMessage = { id: uuidv4(), role: 'user', text };
     const updatedHistory = [...messages, userMsg];
@@ -195,16 +263,48 @@ const App: React.FC = () => {
     resetHistory();
   };
 
+  const handleSave = async () => {
+    if (!user) {
+      alert("Please sign in to save your project.");
+      return;
+    }
+
+    try {
+      const projectData = {
+        name: "Untitled Project", // TODO: Add UI for project name
+        description: "Created with ZiroEDA",
+        owner_id: user.uid,
+        owner_name: user.displayName || "Anonymous",
+        is_public: false,
+        design: {
+          components,
+          connections,
+          code: arduinoCode
+        }
+      };
+
+      await saveProject(projectData);
+      alert("Project saved successfully!");
+    } catch (error) {
+      console.error("Failed to save project:", error);
+      alert("Failed to save project. See console for details.");
+    }
+  };
+
   const handleShare = () => {
-    const data = JSON.stringify({ components, connections, code: arduinoCode });
-    console.log("Sharing Data:", data);
-    alert("Shareable link copied to clipboard! (Simulation)");
+    // Repurposing Share for Save temporarily as requested/implied
+    handleSave();
   };
 
   const selectedComponent = components.find(c => c.id === selectedComponentId);
 
+  if (authLoading) {
+    return <div className="flex h-screen w-screen items-center justify-center bg-dark-900 text-white">Loading...</div>;
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-dark-900 text-white font-sans relative">
+      {!user && <LoginOverlay />}
 
       {/* --- MOBILE: Library Drawer (90% from Left) --- */}
       <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isLibraryOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>
@@ -245,6 +345,8 @@ const App: React.FC = () => {
           isCompiling={isCompiling}
           toggleLibrary={() => setIsLibraryOpen(!isLibraryOpen)}
           isLibraryOpen={isLibraryOpen}
+          saveStatus={saveStatus}
+          lastSavedAt={lastSavedAt}
         />
 
         <div className="flex-1 relative bg-grid overflow-hidden">
