@@ -108,8 +108,25 @@ export class SimulationService {
     this.isRunning = false;
     if (this.animationFrame) {
       cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
     }
     this.simulator.stop();
+  }
+
+  pause() {
+    this.isRunning = false;
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+  }
+
+  resume() {
+    if (!this.isRunning && this.simulator.runner) {
+      this.isRunning = true;
+      this.lastTimestamp = performance.now();
+      this.animationFrame = requestAnimationFrame(this.tick.bind(this));
+    }
   }
 
   serialWrite(data: string) {

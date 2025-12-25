@@ -67,6 +67,7 @@ const App: React.FC = () => {
   const { historyIndex, historyLength, saveToHistory, undo, redo, resetHistory } = useCircuitHistory();
   const {
     isSimulating,
+    isPaused,
     isCompiling,
     simulationPinStates,
     serialOutput,
@@ -80,6 +81,18 @@ const App: React.FC = () => {
   } = useSimulationRunner(components, connections, arduinoCode, (simulator) => {
     canvasRef.current?.updateVisuals(simulator);
   });
+
+  const handleStopSimulation = () => {
+    stopSimulation();
+    canvasRef.current?.resetVisuals();
+  };
+
+  // Auto-reset simulation on edit
+  useEffect(() => {
+    if (isSimulating) {
+      handleStopSimulation();
+    }
+  }, [components, connections, arduinoCode]);
 
   // Selection & UI State
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
@@ -336,12 +349,13 @@ const App: React.FC = () => {
         <UpperToolbar
           onViewCode={() => setIsCodeEditorOpen(prev => !prev)}
           onSimulate={toggleSimulation}
-          onResetSimulation={resetSimulation}
+          onResetSimulation={handleStopSimulation}
           onViewSerialMonitor={() => setIsSerialMonitorOpen(prev => !prev)}
           onViewSchematic={() => alert("Schematic View: Feature Coming Soon")}
           onViewBOM={() => setIsBOMOpen(prev => !prev)}
           onShare={handleShare}
           isSimulating={isSimulating}
+          isPaused={isPaused}
           isCompiling={isCompiling}
           toggleLibrary={() => setIsLibraryOpen(!isLibraryOpen)}
           isLibraryOpen={isLibraryOpen}

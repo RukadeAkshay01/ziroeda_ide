@@ -12,6 +12,7 @@ export const useSimulationRunner = (
   onTick?: (simulator: CircuitSimulator) => void
 ) => {
   const [isSimulating, setIsSimulating] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
   const [simulationPinStates, setSimulationPinStates] = useState<Record<string, number>>({});
   const [serialOutput, setSerialOutput] = useState<string>("");
@@ -32,6 +33,7 @@ export const useSimulationRunner = (
       serviceRef.current = null;
     }
     setIsSimulating(false);
+    setIsPaused(false);
     setSimulationPinStates({});
   }, []);
 
@@ -42,10 +44,6 @@ export const useSimulationRunner = (
     setIsCompiling(true);
     setSerialOutput("");
     try {
-      // We don't actually use the hex here anymore since SimulationService handles compilation via Simulator
-      // But we keep compileArduinoCode call if we want to show compilation errors early.
-      // Actually, Simulator.load calls compileSketch.
-
       const service = new SimulationService((update: SimulationUpdate) => {
         if (Object.keys(update.pinStates).length > 0) {
           setSimulationPinStates(update.pinStates);
@@ -57,6 +55,7 @@ export const useSimulationRunner = (
       serviceRef.current = service;
       await service.start(components, connections, arduinoCode);
       setIsSimulating(true);
+      setIsPaused(false);
     } catch (err) {
       throw err;
     } finally {
@@ -66,15 +65,24 @@ export const useSimulationRunner = (
 
   const toggleSimulation = useCallback(async () => {
     if (isSimulating) {
-      stopSimulation();
+      if (isPaused) {
+        // Resume
+        serviceRef.current?.resume();
+        setIsPaused(false);
+      } else {
+        // Pause
+        serviceRef.current?.pause();
+        setIsPaused(true);
+      }
     } else {
+      // Start
       try {
         await startSimulation();
       } catch (e: any) {
         alert("Simulation Error: " + e.message);
       }
     }
-  }, [isSimulating, startSimulation, stopSimulation]);
+  }, [isSimulating, isPaused, startSimulation]);
 
   const resetSimulation = useCallback(async () => {
     if (isSimulating) {
@@ -99,6 +107,7 @@ export const useSimulationRunner = (
 
   return {
     isSimulating,
+    isPaused,
     isCompiling,
     simulationPinStates,
     serialOutput,

@@ -2,6 +2,7 @@
 import React from 'react';
 import {
   Play,
+  Pause,
   Square,
   Code,
   RotateCcw,
@@ -22,6 +23,7 @@ interface UpperToolbarProps {
   onViewBOM: () => void;
   onShare: () => void;
   isSimulating: boolean;
+  isPaused?: boolean;
   isCompiling: boolean;
   toggleLibrary: () => void;
   isLibraryOpen: boolean;
@@ -38,6 +40,7 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
   onViewBOM,
   onShare,
   isSimulating,
+  isPaused = false,
   isCompiling,
   toggleLibrary,
   isLibraryOpen,
@@ -94,37 +97,49 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
 
         <div className="hidden sm:block w-px h-8 bg-dark-700 flex-shrink-0 mx-1" />
 
-        {/* Start/Stop Simulation */}
+        {/* Start/Pause/Resume Simulation */}
         <div className="flex flex-col items-center justify-center gap-1 group min-w-0 sm:min-w-[3.5rem]">
           <button
             onClick={onSimulate}
             disabled={isCompiling}
-            className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl transition-all duration-200 border shadow-sm ${isSimulating
-              ? 'bg-red-500/10 border-red-500/30 text-red-500 shadow-red-900/20 hover:bg-red-500/20'
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl transition-all duration-200 border shadow-sm ${isSimulating && !isPaused
+              ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500 shadow-yellow-900/20 hover:bg-yellow-500/20'
               : 'bg-[#22c55e]/10 border-[#22c55e]/30 text-[#22c55e] shadow-green-900/20 hover:bg-[#22c55e]/20 hover:-translate-y-0.5'
               }`}
-            title={isSimulating ? "Stop Simulation" : "Start Simulation"}
+            title={isCompiling ? "Compiling..." : isSimulating && !isPaused ? "Pause Simulation" : isSimulating && isPaused ? "Resume Simulation" : "Start Simulation"}
           >
             {isCompiling ? (
               <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-            ) : isSimulating ? (
-              <Square className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+            ) : isSimulating && !isPaused ? (
+              <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
             ) : (
               <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
             )}
           </button>
-          <span className={`hidden sm:block text-[9px] font-bold tracking-wider uppercase transition-colors whitespace-nowrap ${isSimulating ? 'text-red-500/60' : 'text-[#22c55e]/60'
+          <span className={`hidden sm:block text-[9px] font-bold tracking-wider uppercase transition-colors whitespace-nowrap ${isSimulating && !isPaused ? 'text-yellow-500/60' : 'text-[#22c55e]/60'
             }`}>
-            {isCompiling ? 'Loading' : isSimulating ? 'Stop' : 'Start'}
+            {isCompiling ? 'Loading' : isSimulating && !isPaused ? 'Pause' : isSimulating && isPaused ? 'Resume' : 'Start'}
           </span>
         </div>
 
-        <ToolbarButton
-          icon={RotateCcw}
-          label="Reset"
-          onClick={onResetSimulation}
-          disabled={!isSimulating}
-        />
+        {/* Stop/Reset Simulation */}
+        <div className="flex flex-col items-center justify-center gap-1 group min-w-0 sm:min-w-[3.5rem]">
+          <button
+            onClick={onResetSimulation}
+            disabled={!isSimulating}
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl transition-all duration-200 border shadow-sm ${isSimulating
+              ? 'bg-red-500/10 border-red-500/30 text-red-500 shadow-red-900/20 hover:bg-red-500/20'
+              : 'bg-dark-800/50 text-dark-700 border-transparent cursor-not-allowed'
+              }`}
+            title="Stop Simulation"
+          >
+            <Square className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+          </button>
+          <span className={`hidden sm:block text-[9px] font-bold tracking-wider uppercase transition-colors whitespace-nowrap ${isSimulating ? 'text-red-500/60' : 'text-dark-700'
+            }`}>
+            Reset
+          </span>
+        </div>
 
         <div className="hidden sm:block w-px h-8 bg-dark-700 flex-shrink-0 mx-1" />
 

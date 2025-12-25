@@ -40,6 +40,9 @@ export class CircuitSimulator {
   public joystick: Joystick | null = null;
   private hx711: HX711 | null = null;
 
+  // Pushbuttons
+  private pushButtons: Set<string> = new Set();
+
   // NeoPixel Support
   private neopixelDecoders: Map<string, WS2812Decoder> = new Map();
   private neopixelState: Map<string, Uint32Array> = new Map();
@@ -85,6 +88,7 @@ export class CircuitSimulator {
     this.gndNets.clear();
     this.neopixelDecoders.clear();
     this.neopixelState.clear();
+    this.pushButtons.clear();
   }
 
   /**
@@ -530,6 +534,14 @@ export class CircuitSimulator {
         } else {
           console.warn(`[Simulator] NeoPixel ${comp.id} DIN pin not connected to MCU.`);
         }
+      }
+
+    });
+
+    // Identify Pushbuttons
+    design.components.forEach(c => {
+      if (c.type === 'pushbutton' || c.type === 'wokwi-pushbutton') {
+        this.pushButtons.add(c.id);
       }
     });
 
@@ -1165,6 +1177,44 @@ export class CircuitSimulator {
         this.setAnalogInput(id, 'A0', detail.voltage);
         // Also set digital pin?
         this.setInput(id, 'D0', name === 'mousedown'); // Active Low/High?
+      } else if (this.pushButtons.has(id)) {
+        // Pushbutton logic
+        const isPressed = name === 'mousedown';
+        const pins = ['1.l', '1.r', '2.l', '2.r'];
+
+        // Determine target state based on connections
+        // If connected to GND, we drive LOW when pressed, HIGH (or float) when released.
+        // If connected to VCC, we drive HIGH when pressed, LOW (or float) when released.
+
+        let connectedToGND = false;
+        let connectedToVCC = false;
+
+        for (const pin of pins) {
+          const v = this.getPinVoltage(id, pin);
+          // Note: getPinVoltage returns 0 or 5 based on MCU state or VCC/GND nets
+          // We need to check if it's connected to a VCC/GND net specifically?
+          // getPinVoltage uses vccNets/gndNets.
+          const netId = this.resolvePin(id, pin);
+          if (netId) {
+            if (this.gndNets.has(netId)) connectedToGND = true;
+            if (this.vccNets.has(netId)) connectedToVCC = true;
+          }
+        }
+
+        let targetState = false;
+        if (connectedToGND) {
+          // Active LOW (Pull-up)
+          targetState = !isPressed; // Pressed -> LOW (false), Released -> HIGH (true)
+        } else if (connectedToVCC) {
+          // Active HIGH (Pull-down)
+          targetState = isPressed; // Pressed -> HIGH (true), Released -> LOW (false)
+        } else {
+          // Default to Active LOW behavior if unsure (standard Arduino button)
+          targetState = !isPressed;
+        }
+
+        // Apply to all pins (short them)
+        pins.forEach(pin => this.setInput(id, pin, targetState));
       }
     }
   }

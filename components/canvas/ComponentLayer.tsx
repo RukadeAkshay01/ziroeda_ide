@@ -12,6 +12,8 @@ interface ComponentLayerProps {
   onComponentMouseDown: (e: React.MouseEvent, id: string) => void;
   onComponentTouchStart?: (e: React.TouchEvent, id: string) => void;
   setComponentRef: (id: string) => (el: HTMLElement | null) => void;
+  isSimulating?: boolean;
+  onComponentEvent?: (id: string, name: string, detail: any) => void;
 }
 
 const ComponentLayer: React.FC<ComponentLayerProps> = ({
@@ -21,7 +23,9 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
   selectedComponentId,
   onComponentMouseDown,
   onComponentTouchStart,
-  setComponentRef
+  setComponentRef,
+  isSimulating,
+  onComponentEvent
 }) => {
   return (
     <>
@@ -32,11 +36,45 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
         const flipY = comp.attributes?.flipY ? -1 : 1;
         const rotation = comp.rotation || 0;
 
+        const handleMouseDown = (e: React.MouseEvent) => {
+          if (isSimulating && onComponentEvent) {
+            e.stopPropagation();
+            onComponentEvent(comp.id, 'mousedown', {});
+          } else {
+            onComponentMouseDown(e, comp.id);
+          }
+        };
+
+        const handleMouseUp = (e: React.MouseEvent) => {
+          if (isSimulating && onComponentEvent) {
+            e.stopPropagation();
+            onComponentEvent(comp.id, 'mouseup', {});
+          }
+        };
+
+        const handleTouchStart = (e: React.TouchEvent) => {
+          if (isSimulating && onComponentEvent) {
+            e.stopPropagation();
+            onComponentEvent(comp.id, 'mousedown', {});
+          } else {
+            onComponentTouchStart?.(e, comp.id);
+          }
+        };
+
+        const handleTouchEnd = (e: React.TouchEvent) => {
+          if (isSimulating && onComponentEvent) {
+            e.stopPropagation();
+            onComponentEvent(comp.id, 'mouseup', {});
+          }
+        };
+
         return (
           <div
             key={comp.id}
-            onMouseDown={(e) => onComponentMouseDown(e, comp.id)}
-            onTouchStart={(e) => onComponentTouchStart?.(e, comp.id)}
+            onMouseDown={handleMouseDown}
+            onMouseUp={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
             className={`absolute group cursor-move ${isDraggingThis ? '' : 'transition-all duration-500 ease-in-out'}`}
             style={{
               left: `${comp.x}px`,

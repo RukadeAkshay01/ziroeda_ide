@@ -31,6 +31,7 @@ interface CanvasProps {
 export interface CanvasHandle {
   zoomToFit: () => void;
   updateVisuals: (simulator: CircuitSimulator) => void;
+  resetVisuals: () => void;
 }
 
 const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
@@ -74,6 +75,17 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
           const el = componentRefs.current.get(comp.id);
           if (el) {
             mapping.update(comp, el, simulator);
+          }
+        }
+      });
+    },
+    resetVisuals: () => {
+      components.forEach(comp => {
+        const mapping = COMPONENT_MAPPINGS[comp.type];
+        if (mapping && mapping.reset) {
+          const el = componentRefs.current.get(comp.id);
+          if (el) {
+            mapping.reset(comp, el);
           }
         }
       });
@@ -170,6 +182,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
           onComponentMouseDown={handlers.handleComponentMouseDown}
           onComponentTouchStart={handlers.handleComponentTouchStart}
           setComponentRef={setComponentRef}
+          isSimulating={isSimulating}
+          onComponentEvent={onComponentEvent}
         />
 
         {/* Layer 3 (Top): Interaction Wires - Handles & Highlights on top of components */}
