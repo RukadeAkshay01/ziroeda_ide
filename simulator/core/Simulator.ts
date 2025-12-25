@@ -43,6 +43,9 @@ export class CircuitSimulator {
   // Pushbuttons
   private pushButtons: Set<string> = new Set();
 
+  // Component Types Map
+  private componentTypes: Map<string, string> = new Map();
+
   // NeoPixel Support
   private neopixelDecoders: Map<string, WS2812Decoder> = new Map();
   private neopixelState: Map<string, Uint32Array> = new Map();
@@ -89,6 +92,7 @@ export class CircuitSimulator {
     this.neopixelDecoders.clear();
     this.neopixelState.clear();
     this.pushButtons.clear();
+    this.componentTypes.clear();
   }
 
   /**
@@ -134,6 +138,11 @@ export class CircuitSimulator {
       const rootJ = find(j);
       if (rootI !== rootJ) parent.set(rootI, rootJ);
     };
+
+    this.componentTypes.clear();
+    design.components.forEach(c => {
+      this.componentTypes.set(c.id, c.type);
+    });
 
     // Initialize all pins from connections
     const allPins = new Set<string>();
@@ -1127,6 +1136,7 @@ export class CircuitSimulator {
    * Routes events from the UI overlays to the appropriate peripheral methods.
    */
   handleComponentEvent(id: string, name: string, detail: any) {
+    console.log(`[Simulator] handleComponentEvent: ${id} ${name}`, detail);
     if (name === 'input') {
       if (detail.value !== undefined) {
         // Generic value input (distance, weight, etc.)
@@ -1134,13 +1144,37 @@ export class CircuitSimulator {
         this.setHX711Weight(id, detail.value);
         this.setHeartBeatRate(id, detail.value);
         // LDR / NTC / Gas / Sound
-        // We need specific methods for these or generic analog input setting?
-        // Currently Simulator doesn't have setLDR, setNTC, etc.
-        // But we can use setAnalogInput if we know the pin.
-        // However, the overlays send 'value' which might be lux, temp, etc.
-        // We need to map these values to voltage or resistance if we want accurate simulation.
-        // For now, let's assume the components handle it or we add methods.
+        if (this.componentTypes.get(id)?.includes('photoresistor') || this.componentTypes.get(id)?.includes('ldr')) {
+          const lux = detail.value || 0;
+          const voltage = (lux / 1000) * 5.0;
+          console.log(`[Simulator] LDR Event (Input): ${id} Lux: ${lux} -> Voltage: ${voltage.toFixed(2)}V`);
+
+          const pins = ['1', '2', 'A0', 'AO', 'SIG'];
+          for (const pin of pins) {
+            const netId = this.resolvePin(id, pin);
+            if (netId) {
+              const mcuPin = this.netToMcuPin.get(netId);
+              if (mcuPin && mcuPin.port === PORT_C_ADDR) {
+                this.runner.setAnalogInput(mcuPin.bit, voltage);
+              }
+            }
+          }
+        }
       }
+
+      // PIR Sensor Logic
+      if (this.componentTypes.get(id)?.includes('pir')) {
+        const isMotion = detail.value === true;
+        console.log(`[Simulator] PIR Event: ${id} Motion: ${isMotion}`);
+
+        const pins = ['OUT', 'SIG', '2'];
+        for (const pin of pins) {
+          // PIR output is digital.
+          // We use setInput to drive the pin HIGH/LOW from the component side.
+          this.setInput(id, pin, isMotion);
+        }
+      }
+
       if (detail.temp !== undefined && detail.hum !== undefined) {
         this.setDHT22Environment(id, detail.temp, detail.hum);
       }

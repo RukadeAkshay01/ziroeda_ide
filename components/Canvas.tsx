@@ -184,6 +184,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
           setComponentRef={setComponentRef}
           isSimulating={isSimulating}
           onComponentEvent={onComponentEvent}
+          onSelectComponent={onSelectComponent}
         />
 
         {/* Layer 3 (Top): Interaction Wires - Handles & Highlights on top of components */}

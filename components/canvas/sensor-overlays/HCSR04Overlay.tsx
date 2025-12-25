@@ -65,7 +65,7 @@ export const HCSR04Overlay: React.FC<HCSR04OverlayProps> = ({ components, layout
     const maxRange = 400;
     const minRange = 2; // Physical min
     const innerRange = 20; // Visual blind spot for style (slightly exaggerated)
-    const angle = 45; // Degrees (Visual cone angle)
+    const angle = 60; // Degrees (Visual cone angle)
 
     const pos = layout[sensor.id] || { x: 0, y: 0 };
     const sensorX = pos.x;

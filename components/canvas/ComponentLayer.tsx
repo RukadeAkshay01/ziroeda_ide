@@ -14,6 +14,7 @@ interface ComponentLayerProps {
   setComponentRef: (id: string) => (el: HTMLElement | null) => void;
   isSimulating?: boolean;
   onComponentEvent?: (id: string, name: string, detail: any) => void;
+  onSelectComponent?: (id: string) => void;
 }
 
 const ComponentLayer: React.FC<ComponentLayerProps> = ({
@@ -25,7 +26,8 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
   onComponentTouchStart,
   setComponentRef,
   isSimulating,
-  onComponentEvent
+  onComponentEvent,
+  onSelectComponent
 }) => {
   return (
     <>
@@ -39,6 +41,7 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
         const handleMouseDown = (e: React.MouseEvent) => {
           if (isSimulating && onComponentEvent) {
             e.stopPropagation();
+            onSelectComponent?.(comp.id);
             onComponentEvent(comp.id, 'mousedown', {});
           } else {
             onComponentMouseDown(e, comp.id);
@@ -55,6 +58,7 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
         const handleTouchStart = (e: React.TouchEvent) => {
           if (isSimulating && onComponentEvent) {
             e.stopPropagation();
+            onSelectComponent?.(comp.id);
             onComponentEvent(comp.id, 'mousedown', {});
           } else {
             onComponentTouchStart?.(e, comp.id);

@@ -132,7 +132,40 @@ export const COMPONENT_MAPPINGS: Record<string, ComponentMapping> = {
         update: (comp, el, simulator) => {
             const buffer = simulator.getOLEDFrame();
             if (buffer) {
-                el.imageData = buffer;
+                // Convert 1-bit vertical page buffer to RGBA ImageData
+                const width = 128;
+                const height = 64;
+                const rgbaBuffer = new Uint8ClampedArray(width * height * 4);
+
+                for (let i = 0; i < 1024; i++) {
+                    const byte = buffer[i];
+                    const page = Math.floor(i / 128);
+                    const col = i % 128;
+
+                    for (let bit = 0; bit < 8; bit++) {
+                        const pixelOn = (byte >> bit) & 1;
+                        const y = page * 8 + bit;
+                        const x = col;
+
+                        // Safety check
+                        if (y < height && x < width) {
+                            const index = (y * width + x) * 4;
+                            if (pixelOn) {
+                                rgbaBuffer[index] = 0;     // R
+                                rgbaBuffer[index + 1] = 255; // G
+                                rgbaBuffer[index + 2] = 255; // B (Cyan)
+                                rgbaBuffer[index + 3] = 255; // A
+                            } else {
+                                rgbaBuffer[index] = 0;
+                                rgbaBuffer[index + 1] = 0;
+                                rgbaBuffer[index + 2] = 0;
+                                rgbaBuffer[index + 3] = 255; // Opaque Black
+                            }
+                        }
+                    }
+                }
+
+                el.imageData = new ImageData(rgbaBuffer, width, height);
                 if (el.redraw) el.redraw();
             }
         }

@@ -24,6 +24,7 @@ export const LDROverlay: React.FC<LDROverlayProps> = ({ components, layout, sele
 
     useEffect(() => {
         if (ldr && onComponentEvent) {
+            console.log(`[LDROverlay] Sending input event for ${ldr.id}:`, lux);
             onComponentEvent(ldr.id, 'input', { value: lux });
         }
     }, [lux, ldr, onComponentEvent]);

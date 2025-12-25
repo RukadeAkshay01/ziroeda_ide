@@ -42,7 +42,7 @@ export const MPU6050Overlay: React.FC<MPU6050OverlayProps> = ({ components, layo
 
     return (
         <g transform={`translate(${pos.x + offsetX}, ${pos.y + offsetY})`}>
-            <foreignObject width={panelWidth} height={panelHeight} style={{ overflow: 'visible' }}>
+            <foreignObject width={panelWidth} height={panelHeight} style={{ overflow: 'visible', pointerEvents: 'auto' }}>
                 <div style={{
                     background: 'rgba(30, 30, 30, 0.9)',
                     backdropFilter: 'blur(4px)',
@@ -55,7 +55,8 @@ export const MPU6050Overlay: React.FC<MPU6050OverlayProps> = ({ components, layo
                     boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
                     userSelect: 'none'
                 }}
-                    onMouseDown={(e) => e.stopPropagation()} // Prevent dragging the canvas
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()} // Prevent dragging the canvas
                 >
                     <div style={{ marginBottom: '8px', fontWeight: 'bold', borderBottom: '1px solid #555', paddingBottom: '4px' }}>
                         MPU6050 Control

@@ -15,7 +15,7 @@ import { PIROverlay } from './PIROverlay';
 import { SoundSensorOverlay } from './SoundSensorOverlay';
 
 import { CircuitSimulator } from '../../../simulator/core/Simulator';
-import { SSD1306Overlay } from './SSD1306Overlay';
+
 
 interface SensorOverlaysProps {
     components: CircuitComponent[];
@@ -65,7 +65,8 @@ export const SensorOverlays: React.FC<SensorOverlaysProps> = (props) => {
             </svg>
 
             {/* HTML Overlays */}
-            <SSD1306Overlay {...props} />
+            {/* HTML Overlays */}
+            <MembraneKeypadOverlay {...props} />
             <MembraneKeypadOverlay {...props} />
         </>
     );
