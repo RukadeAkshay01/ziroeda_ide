@@ -107,6 +107,7 @@ export const useSimulationRunner = (
     stopSimulation,
     sendSerialInput,
     clearSerialOutput,
-    getSimulator: () => serviceRef.current?.getSimulator()
+    getSimulator: () => serviceRef.current?.getSimulator(),
+    handleComponentEvent: (id: string, name: string, detail: any) => serviceRef.current?.handleComponentEvent(id, name, detail)
   };
 };

@@ -119,6 +119,10 @@ export class SimulationService {
   getSimulator() {
     return this.simulator;
   }
+
+  handleComponentEvent(id: string, name: string, detail: any) {
+    this.simulator.handleComponentEvent(id, name, detail);
+  }
 }
 
 // For backward compatibility with useSimulationRunner hook

@@ -1110,4 +1110,62 @@ export class CircuitSimulator {
   setHX711Weight(compId: string, weight: number) {
     this.hx711?.setWeight(weight);
   }
+
+  /**
+   * Routes events from the UI overlays to the appropriate peripheral methods.
+   */
+  handleComponentEvent(id: string, name: string, detail: any) {
+    if (name === 'input') {
+      if (detail.value !== undefined) {
+        // Generic value input (distance, weight, etc.)
+        this.setHCSR04Distance(id, detail.value);
+        this.setHX711Weight(id, detail.value);
+        this.setHeartBeatRate(id, detail.value);
+        // LDR / NTC / Gas / Sound
+        // We need specific methods for these or generic analog input setting?
+        // Currently Simulator doesn't have setLDR, setNTC, etc.
+        // But we can use setAnalogInput if we know the pin.
+        // However, the overlays send 'value' which might be lux, temp, etc.
+        // We need to map these values to voltage or resistance if we want accurate simulation.
+        // For now, let's assume the components handle it or we add methods.
+      }
+      if (detail.temp !== undefined && detail.hum !== undefined) {
+        this.setDHT22Environment(id, detail.temp, detail.hum);
+      }
+      if (detail.pressed !== undefined) {
+        this.setRotaryEncoderPress(id, detail.pressed);
+        this.setHeartBeatActive(id, detail.pressed);
+      }
+      if (detail.rotate !== undefined) {
+        this.setRotaryEncoderRotate(id, detail.rotate);
+      }
+      if (detail.accelX !== undefined) {
+        // MPU6050
+        this.setMPU6050Motion(id,
+          { x: detail.accelX, y: detail.accelY, z: detail.accelZ },
+          { x: detail.gyroX, y: detail.gyroY, z: detail.gyroZ },
+          detail.temperature || 25
+        );
+      }
+    } else if (name === 'environment-change') {
+      this.setDHT22Environment(id, detail.temperature, detail.humidity);
+    } else if (name === 'set-heart-beat-active') {
+      this.setHeartBeatActive(id, detail.active);
+    } else if (name === 'set-heart-beat-rate') {
+      this.setHeartBeatRate(id, detail.bpm);
+    } else if (name === 'remote-button') {
+      this.triggerIRReceiver(id, detail.code);
+    } else if (name === 'mousedown' || name === 'mouseup') {
+      // Flame sensor or generic button
+      // Flame sensor sends { voltage, analogValue }
+      if (detail.voltage !== undefined) {
+        // We need to set the analog pin voltage.
+        // But we don't know the pin name here easily without looking it up.
+        // For Flame Sensor, it's usually A0.
+        this.setAnalogInput(id, 'A0', detail.voltage);
+        // Also set digital pin?
+        this.setInput(id, 'D0', name === 'mousedown'); // Active Low/High?
+      }
+    }
+  }
 }

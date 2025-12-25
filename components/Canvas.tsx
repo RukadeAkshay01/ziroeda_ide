@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { CircuitComponent, WokwiConnection } from '../types';
 import { useCanvasTransform } from '../hooks/useCanvasTransform';
 import { useWireRouting } from '../hooks/useWireRouting';
@@ -11,6 +11,7 @@ import { CircuitSimulator } from '../simulator/core/Simulator';
 import WireOverlay from './canvas/WireOverlay';
 import PinOverlay from './canvas/PinOverlay';
 import ComponentLayer from './canvas/ComponentLayer';
+import { SensorOverlays } from './canvas/sensor-overlays/SensorOverlays';
 
 interface CanvasProps {
   components: CircuitComponent[];
@@ -22,6 +23,9 @@ interface CanvasProps {
   onDragEnd?: () => void;
   onConnectionCreated?: (sourceId: string, sourcePin: string, targetId: string, targetPin: string) => void;
   simulationPinStates?: Record<string, number>;
+  onComponentEvent?: (id: string, name: string, detail: any) => void;
+  simulator?: CircuitSimulator;
+  isSimulating?: boolean;
 }
 
 export interface CanvasHandle {
@@ -38,10 +42,22 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
   onComponentMove,
   onDragEnd,
   onConnectionCreated,
-  simulationPinStates
+  simulationPinStates,
+  onComponentEvent,
+  simulator,
+  isSimulating
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const componentRefs = useRef<Map<string, HTMLElement>>(new Map());
+
+  // Prepare component positions for overlays
+  const componentPositions = useMemo(() => {
+    const pos: Record<string, { x: number; y: number }> = {};
+    components.forEach(c => {
+      pos[c.id] = { x: c.x, y: c.y };
+    });
+    return pos;
+  }, [components]);
 
   // 1. Core Canvas Logic Hooks
   const { transform, handleWheel, getCanvasCoords, pan, zoomToFit } = useCanvasTransform(containerRef);
@@ -168,6 +184,17 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
           layoutData={layoutData}
           drawingState={drawingState}
           onPinClick={handlers.handlePinClick}
+        />
+
+        {/* Layer 5 (Interactive): Sensor Overlays */}
+        <SensorOverlays
+          components={components}
+          layout={componentPositions}
+          selectedId={selectedComponentId}
+          zoom={transform.scale}
+          onComponentEvent={onComponentEvent}
+          simulator={simulator}
+          isSimulating={isSimulating}
         />
       </div>
     </div>

@@ -42,7 +42,9 @@ const App: React.FC = () => {
     resetSimulation,
     stopSimulation,
     sendSerialInput,
-    clearSerialOutput
+    clearSerialOutput,
+    handleComponentEvent,
+    getSimulator
   } = useSimulationRunner(components, connections, arduinoCode, (simulator) => {
     canvasRef.current?.updateVisuals(simulator);
   });
@@ -258,6 +260,9 @@ const App: React.FC = () => {
             onDragEnd={() => saveToHistory(components, connections)}
             onConnectionCreated={createConnection}
             simulationPinStates={isSimulating ? simulationPinStates : undefined}
+            onComponentEvent={handleComponentEvent}
+            simulator={getSimulator()}
+            isSimulating={isSimulating}
           />
 
           {isPropertiesOpen && selectedComponent && (
