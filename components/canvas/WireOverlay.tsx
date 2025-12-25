@@ -35,7 +35,7 @@ const WireOverlay: React.FC<WireOverlayProps> = ({
   };
 
   return (
-    <svg className="absolute top-0 left-0 overflow-visible z-30 pointer-events-none" style={{ width: 1, height: 1 }}>
+    <svg className="absolute top-0 left-0 overflow-visible z-30 pointer-events-none" style={{ width: '100%', height: '100%' }}>
       {connections.map((conn, idx) => {
         const indexStr = `${idx}`;
         const points = wireRoutes.get(indexStr);

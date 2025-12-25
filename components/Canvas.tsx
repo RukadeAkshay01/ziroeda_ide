@@ -29,10 +29,15 @@ interface CanvasProps {
   isReadOnly?: boolean;
 }
 
+import { Point } from '../types';
+
 export interface CanvasHandle {
   zoomToFit: () => void;
   updateVisuals: (simulator: CircuitSimulator) => void;
   resetVisuals: () => void;
+  getContainer: () => HTMLDivElement | null;
+  getWireRoutes: () => Map<string, Point[]>;
+  getTransform: () => { x: number; y: number; scale: number };
 }
 
 const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
@@ -70,6 +75,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     zoomToFit: () => zoomToFit(components),
+    getWireRoutes: () => wireRoutes,
+    getTransform: () => transform,
     updateVisuals: (simulator: CircuitSimulator) => {
       components.forEach(comp => {
         const mapping = COMPONENT_MAPPINGS[comp.type];
@@ -91,7 +98,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
           }
         }
       });
-    }
+    },
+    getContainer: () => containerRef.current
   }));
 
   // 2. Interaction Logic Hook
@@ -115,7 +123,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
     onDragEnd,
     onConnectionCreated,
     zoomAtPoint,
-    isReadOnly
+    isReadOnly,
+    isSimulating // Pass this
   });
 
   // 3. Propagate Simulation States (Legacy - now handled by updateVisuals)
@@ -130,6 +139,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
 
   return (
     <div
+      id="circuit-canvas-container"
       ref={containerRef}
       className={`relative w-full h-full bg-dark-800 overflow-hidden shadow-inner ${dragMode === 'PAN' ? 'cursor-grabbing' : 'cursor-grab'}`}
       style={{

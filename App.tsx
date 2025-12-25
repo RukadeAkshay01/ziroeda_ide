@@ -22,10 +22,15 @@ import LoginOverlay from './components/LoginOverlay';
 import { useCircuitHistory } from './hooks/useCircuitHistory';
 import { useSimulationRunner } from './hooks/useSimulationRunner';
 import { useComponentActions } from './hooks/useComponentActions';
-import { saveProject, loadProject, fetchProjectVersions, createProjectVersion, ProjectVersion } from './services/supabase';
+import { saveProject, updateProject, loadProject, fetchProjectVersions, createProjectVersion, ProjectVersion, uploadProjectPreview } from './services/supabase';
+import { domToPng } from 'modern-screenshot';
+
 import VersionHistoryPanel from './components/VersionHistoryPanel';
+import { ConfirmationModal } from './components/modals/ConfirmationModal';
 
 import { useAutosave } from './hooks/useAutosave';
+
+
 
 const App: React.FC = () => {
   // Auth State
@@ -37,6 +42,68 @@ const App: React.FC = () => {
   const [projectName, setProjectName] = useState<string>("Untitled Project");
   const [isPublic, setIsPublic] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
+
+  // Canvas Ref (Moved up for useAutosave)
+  const canvasRef = useRef<CanvasHandle>(null);
+
+  // Exit Confirmation State
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  // Browser Exit Protection
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
+  const handleLogoClick = () => {
+    setShowExitConfirm(true);
+  };
+
+  const handleConfirmExit = () => {
+    window.location.href = 'https://ziroeda.com';
+  };
+
+  const capturePreview = async (): Promise<string | null> => {
+    if (!projectId) return null;
+    const node = canvasRef.current?.getContainer();
+    if (!node) return null;
+
+    try {
+      const dataUrl = await domToPng(node, {
+        scale: 1, // Keep scale at 1 to prevent double-scaling of text
+        features: {
+          // This feature is unique to modern-screenshot
+          // It removes hidden elements which sometimes mess up layout calculations
+          removeControlCharacter: true,
+        },
+        filter: (node: any) => {
+          return node.tagName !== 'IFRAME' && !node.classList?.contains('no-screenshot');
+        }
+      });
+
+      // Convert Data URL to Blob for upload
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+
+      const url = await uploadProjectPreview(projectId, blob);
+
+      if (url) {
+        // Explicitly update the project with the new preview URL
+        await updateProject(projectId, { preview_url: url });
+      }
+
+      return url;
+
+    } catch (error) {
+      console.error('Failed to capture preview:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -68,7 +135,8 @@ const App: React.FC = () => {
     projectName,
     messages,
     isPublic,
-    isReadOnly
+    isReadOnly,
+    capturePreview
   });
 
   // Hooks
@@ -125,7 +193,8 @@ const App: React.FC = () => {
   const isDraggingRef = useRef(false);
 
   // Canvas Ref
-  const canvasRef = useRef<CanvasHandle>(null);
+  // Canvas Ref
+  // const canvasRef = useRef<CanvasHandle>(null); // Moved up
 
   // Responsive Initialization
   useEffect(() => {
@@ -283,6 +352,13 @@ const App: React.FC = () => {
         }
 
         saveToHistory(design.components, design.connections || []);
+
+        // Zoom to fit the new design
+        setTimeout(() => {
+          if (canvasRef.current) {
+            canvasRef.current.zoomToFit();
+          }
+        }, 100);
       }
 
       const aiMsg: ChatMessage = {
@@ -376,15 +452,24 @@ const App: React.FC = () => {
       return;
     }
     try {
+      // Trigger Manual Preview Capture
+      const previewUrl = await capturePreview();
+
       const design = {
         components,
         connections,
         code: arduinoCode
       };
-      await createProjectVersion(projectId, design, name);
-      // Refresh list
-      const versions = await fetchProjectVersions(projectId);
-      setProjectVersions(versions);
+
+      const version = await createProjectVersion(projectId, design, name);
+      // If we have a preview, we might want to attach it to the version too, 
+      // but current createProjectVersion schema doesn't seemingly take previewUrl args in the func signature
+      // (It takes design only).
+      // But updateProject (called inside capturePreview) updates the main project pointer.
+
+      setProjectVersions(prev => [version, ...prev]);
+      setIsHistoryOpen(false);
+      alert("Version created successfully and preview updated!");
     } catch (error) {
       console.error("Failed to create version", error);
       alert("Failed to create version.");
@@ -452,6 +537,7 @@ const App: React.FC = () => {
           toggleLibrary={() => setIsLibraryOpen(!isLibraryOpen)}
           isLibraryOpen={isLibraryOpen}
           isReadOnly={isReadOnly}
+          onLogoClick={handleLogoClick}
         />
 
         <div className="flex-1 relative bg-grid overflow-hidden">
@@ -507,6 +593,22 @@ const App: React.FC = () => {
           isReadOnly={isReadOnly}
         />
       )}
+
+      {/* Exit Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showExitConfirm}
+        onClose={() => setShowExitConfirm(false)}
+        onConfirm={async () => {
+          // Trigger final preview capture on exit
+          await capturePreview();
+          handleConfirmExit();
+        }}
+        title="Leave the IDE?"
+        message="Are you sure you want to leave? Any unsaved changes might be lost (though we usually autosave!)."
+        confirmText="Yes, Leave"
+        cancelText="Stay"
+        type="warning"
+      />
 
       {/* --- DESKTOP: Chat Sidebar --- */}
       <div className="hidden md:block w-96 flex-shrink-0 z-30 h-full border-l border-dark-700 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">

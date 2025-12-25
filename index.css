@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Nuclear CSS Fix for Screenshot Text Distortion */
+/* This targets the snapshot clone specifically.
+   Libraries usually wrap the snapshot in a specific container or foreignObject.
+*/
+
+[data-html2canvas-ignore], /* Safety catch */
+foreignObject svg text {
+    /* FORCE text to be small inside SVGs */
+    font-family: Arial, sans-serif !important;
+    font-size: 10px !important; 
+    
+    /* This prevents the browser from auto-scaling text for readability */
+    text-rendering: geometricPrecision !important;
+    -webkit-font-smoothing: antialiased !important;
+}
+
+/* Specifically target Wokwi elements inside a snapshot */
+foreignObject wokwi-arduino-uno text,
+foreignObject .wokwi-element text {
+    font-size: 12px !important; 
+    transform: none !important; /* Stop it from double-scaling */
+}

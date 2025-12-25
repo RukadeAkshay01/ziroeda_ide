@@ -12,8 +12,10 @@ import {
   ClipboardList,
   Loader2,
   Save,
-  History
+  History,
+  LogOut
 } from 'lucide-react';
+import { ZiroedaLogo } from './ZiroedaLogo';
 
 interface UpperToolbarProps {
   onViewCode: () => void;
@@ -29,6 +31,7 @@ interface UpperToolbarProps {
   toggleLibrary: () => void;
   isLibraryOpen: boolean;
   isReadOnly?: boolean;
+  onLogoClick: () => void;
 }
 
 const UpperToolbar: React.FC<UpperToolbarProps> = ({
@@ -44,7 +47,8 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
   isCompiling,
   toggleLibrary,
   isLibraryOpen,
-  isReadOnly = false
+  isReadOnly = false,
+  onLogoClick
 }) => {
 
   const ToolbarButton = ({
@@ -169,6 +173,22 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
         />
 
         {/* Save Status Indicator - Moved to ChatInterface */}
+
+        <div className="hidden sm:block w-px h-8 bg-dark-700 flex-shrink-0 mx-1" />
+
+        <button
+          onClick={onLogoClick}
+          className="group flex flex-col items-center justify-center gap-1 min-w-[3.5rem]"
+          title="Go to ZiroEDA Home"
+        >
+          <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-800 border border-dark-700 shadow-sm transition-all duration-200 group-hover:bg-dark-700 group-hover:shadow-lg group-hover:-translate-y-0.5">
+            <ZiroedaLogo className="w-6 h-6" />
+          </div>
+          <span className="hidden sm:block text-[9px] font-bold tracking-wider uppercase text-gray-500 group-hover:text-brand-400 transition-colors whitespace-nowrap">
+            Home
+          </span>
+        </button>
+
       </div>
     </div>
   );

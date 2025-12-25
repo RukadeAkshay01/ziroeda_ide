@@ -13,6 +13,7 @@ interface UseAutosaveProps {
     messages: any[];
     isPublic?: boolean;
     isReadOnly?: boolean;
+    capturePreview?: () => Promise<string | null>;
 }
 
 export const useAutosave = ({
@@ -25,7 +26,8 @@ export const useAutosave = ({
     projectName,
     messages,
     isPublic = false,
-    isReadOnly = false
+    isReadOnly = false,
+    capturePreview
 }: UseAutosaveProps) => {
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
     const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -35,6 +37,9 @@ export const useAutosave = ({
 
     // Ref to store the timeout ID
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Track last time we captured a preview to throttle it (e.g. max once per minute)
+    const lastPreviewRef = useRef<number>(0);
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -68,6 +73,8 @@ export const useAutosave = ({
                         connections,
                         code
                     }
+                    // preview_url is deliberately omitted here to avoid overwriting it
+                    // Previews are now saved explicitly on Version Commit or Exit
                 };
 
                 if (projectId) {

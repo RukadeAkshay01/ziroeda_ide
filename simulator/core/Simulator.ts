@@ -13,7 +13,6 @@ import { SSD1306 } from './SSD1306';
 import { MembraneKeypad } from './MembraneKeypad';
 import { HCSR04 } from './HCSR04';
 import { DHT22 } from './DHT22';
-import { RotaryEncoder } from './RotaryEncoder';
 import { DS1307 } from './DS1307';
 import { HeartBeatSensor } from './HeartBeatSensor';
 import { MPU6050 } from './MPU6050';
@@ -21,6 +20,7 @@ import { IRReceiver } from './IRReceiver';
 import { Joystick } from './Joystick';
 import { HX711 } from './HX711';
 import { WS2812Decoder } from './WS2812Decoder';
+import { Piezo } from './Piezo';
 
 const PORT_B_ADDR = 0x25;
 const PORT_C_ADDR = 0x28;
@@ -33,12 +33,17 @@ export class CircuitSimulator {
   private keypad: MembraneKeypad | null = null;
   private hcsr04: HCSR04 | null = null;
   private dht22: DHT22 | null = null;
-  private rotaryEncoder: RotaryEncoder | null = null;
+
   private heartBeatSensor: HeartBeatSensor | null = null;
   private mpu6050: MPU6050 | null = null;
   private irReceiver: IRReceiver | null = null;
   public joystick: Joystick | null = null;
+
   private hx711: HX711 | null = null;
+
+  // Audio
+  private audioContext: AudioContext | null = null;
+  private piezos: Piezo[] = [];
 
   // Pushbuttons
   private pushButtons: Set<string> = new Set();
@@ -51,6 +56,7 @@ export class CircuitSimulator {
   private neopixelState: Map<string, Uint32Array> = new Map();
 
   public time: number = 0;
+
 
   // Map "componentId:pinName" -> netId
   private pinToNet: Map<string, string> = new Map();
@@ -76,7 +82,7 @@ export class CircuitSimulator {
     }
     this.hcsr04 = null;
     this.dht22 = null;
-    this.rotaryEncoder = null;
+
     this.heartBeatSensor = null;
     this.mpu6050 = null;
     if (this.irReceiver) {
@@ -91,8 +97,15 @@ export class CircuitSimulator {
     this.gndNets.clear();
     this.neopixelDecoders.clear();
     this.neopixelState.clear();
+    this.neopixelDecoders.clear();
+    this.neopixelState.clear();
     this.pushButtons.clear();
-    this.componentTypes.clear();
+
+
+    // Dispose audio
+    this.piezos.forEach(p => p.dispose());
+    this.piezos = [];
+    // Do not close AudioContext, generic resource
   }
 
   /**
@@ -143,6 +156,11 @@ export class CircuitSimulator {
     design.components.forEach(c => {
       this.componentTypes.set(c.id, c.type);
     });
+
+    // Initialize AudioContext if needed (requires user interaction before this often)
+    if (!this.audioContext && typeof window !== 'undefined' && 'AudioContext' in window) {
+      this.audioContext = new AudioContext();
+    }
 
     // Initialize all pins from connections
     const allPins = new Set<string>();
@@ -381,34 +399,7 @@ export class CircuitSimulator {
       }
     }
 
-    // Rotary Encoder (KY-040)
-    const rotaryComp = design.components.find(c => c.type.includes('ky-040') || c.type.includes('ky_040'));
-    if (rotaryComp) {
-      const getPin = (name: string) => {
-        const key = `${rotaryComp.id}:${name}`;
-        const netId = this.pinToNet.get(key);
-        if (netId) {
-          const mcuPin = this.netToMcuPin.get(netId);
-          if (mcuPin) {
-            if (mcuPin.port === PORT_D_ADDR) return mcuPin.bit;
-            if (mcuPin.port === PORT_B_ADDR) return mcuPin.bit + 8;
-            if (mcuPin.port === PORT_C_ADDR) return mcuPin.bit + 14;
-          }
-        }
-        return -1;
-      };
 
-      const clk = getPin('CLK');
-      const dt = getPin('DT');
-      const sw = getPin('SW');
-
-      if (clk !== -1 && dt !== -1) {
-        console.log(`[Simulator] Initializing Rotary Encoder: CLK=${clk}, DT=${dt}, SW=${sw}`);
-        this.rotaryEncoder = new RotaryEncoder(this.runner, clk, dt, sw === -1 ? 0 : sw);
-      } else {
-        // console.warn("[Simulator] Rotary Encoder pins not connected.");
-      }
-    }
 
     // HeartBeat Sensor
     const hbComp = design.components.find(c => c.type.includes('heart-beat-sensor') || c.type.includes('heart_beat_sensor'));
@@ -547,6 +538,9 @@ export class CircuitSimulator {
 
     });
 
+    // Buzzer / Piezo
+    this.setupPiezo(design);
+
     // Identify Pushbuttons
     design.components.forEach(c => {
       if (c.type === 'pushbutton' || c.type === 'wokwi-pushbutton') {
@@ -632,6 +626,59 @@ export class CircuitSimulator {
     } else {
       console.log("[Simulator] Available HX711 pins:", Array.from(this.pinToNet.keys()).filter(k => k.startsWith(hxComp.id)));
     }
+  }
+
+  // --- Piezo / Buzzer Support ---
+  private setupPiezo(design: CircuitDesign) {
+    if (!this.runner || !this.audioContext) return;
+
+    const buzzers = design.components.filter(c => c.type.includes('buzzer') || c.type.includes('piezo'));
+
+    buzzers.forEach(comp => {
+      console.log(`[Simulator] Initializing Buzzer ${comp.id}...`);
+
+      let pinConfig: { port: 'B' | 'C' | 'D', bit: number } | null = null;
+
+      // Get all pins for this component that have any net attached
+      const candidates = Array.from(this.pinToNet.keys()).filter(k => k.startsWith(`${comp.id}:`));
+      console.log(`[Simulator] Buzzer Candidates for ${comp.id}:`, candidates);
+
+      for (const pinKey of candidates) {
+        // Skip power pins to be safe, though usually they won't map to a Digital Port anyway.
+        if (pinKey.toUpperCase().includes('GND') || pinKey.toUpperCase().includes('NEG')) continue;
+
+        const netId = this.pinToNet.get(pinKey);
+        if (netId) {
+          const mcuPin = this.netToMcuPin.get(netId);
+          if (mcuPin) {
+            console.log(`[Simulator] Found MCU connection on ${pinKey} -> Port ${mcuPin.port} Bit ${mcuPin.bit}`);
+
+            let portName: 'B' | 'C' | 'D' | null = null;
+            if (mcuPin.port === 0x25) portName = 'B';
+            else if (mcuPin.port === 0x28) portName = 'C';
+            else if (mcuPin.port === 0x2B) portName = 'D';
+
+            if (portName) {
+              pinConfig = { port: portName, bit: mcuPin.bit };
+              break; // Found a valid signal pin, stop searching
+            }
+          }
+        }
+      }
+
+      if (pinConfig) {
+        console.log(`[Simulator] Buzzer ${comp.id} connected to Port ${pinConfig.port}, Bit ${pinConfig.bit}`);
+
+        const piezo = new Piezo(this.audioContext!, comp.id);
+        this.piezos.push(piezo);
+
+        this.runner.attachPinListener(pinConfig.port, pinConfig.bit, (state) => {
+          piezo.update(this.runner!.cpu.cycles, state);
+        });
+      } else {
+        console.warn(`[Simulator] Buzzer ${comp.id} signal pin not connected to MCU.`);
+      }
+    });
   }
 
   // --- IR Receiver Support ---
@@ -832,7 +879,7 @@ export class CircuitSimulator {
         // These peripherals need frequent updates
         this.dht22?.update(batch); // DHT22 logic might need checking too, but IR is critical now.
         this.hcsr04?.update(batch);
-        this.rotaryEncoder?.update(batch);
+        this.hcsr04?.update(batch);
         this.heartBeatSensor?.update();
         this.hx711?.update();
 
@@ -1003,6 +1050,25 @@ export class CircuitSimulator {
     }
   }
 
+  private isInputPullup(portName: 'B' | 'C' | 'D', bit: number): boolean {
+    if (!this.runner) return false;
+    const cpu = this.runner.cpu;
+
+    let portAddr = 0;
+    if (portName === 'B') portAddr = PORT_B_ADDR;
+    else if (portName === 'C') portAddr = PORT_C_ADDR;
+    else if (portName === 'D') portAddr = PORT_D_ADDR;
+
+    const ddrAddr = portAddr - 1; // DDR is PORT - 1
+    const ddrVal = cpu.data[ddrAddr];
+    const portVal = cpu.data[portAddr];
+
+    const isOutput = (ddrVal & (1 << bit)) !== 0;
+    const isHigh = (portVal & (1 << bit)) !== 0;
+
+    return !isOutput && isHigh;
+  }
+
   /**
    * Sets the analog voltage of a specific pin on a component (e.g., potentiometer wiper).
    * 
@@ -1055,17 +1121,44 @@ export class CircuitSimulator {
       c.type === 'keypad');
 
     if (keypadComp) {
+      console.log(`[Simulator] Found Keypad Component: ${keypadComp.id} (${keypadComp.type})`);
+      const detectedPins = Array.from(this.pinToNet.keys()).filter(k => k.startsWith(`${keypadComp.id}:`));
+      console.log(`[Simulator] Keypad Candidates:`, detectedPins);
+
       const pins = new Map<string, { port: number, bit: number }>();
       const pinNames = ['R1', 'R2', 'R3', 'R4', 'C1', 'C2', 'C3', 'C4'];
 
       for (const name of pinNames) {
-        // Use resolvePin for partial matching / robustness
-        const netId = this.resolvePin(keypadComp.id, name);
+        let netId = this.resolvePin(keypadComp.id, name);
+
+        // Fallback: Matrix Keypad often uses pins 1-8
+        // Standard (often): 1-4 = R1-R4, 5-8 = C1-C4 (or variations)
+        if (!netId) {
+          let idx = -1;
+          const rMatch = name.match(/R(\d)/);
+          const cMatch = name.match(/C(\d)/);
+          if (rMatch) idx = parseInt(rMatch[1]);
+          if (cMatch) idx = parseInt(cMatch[1]) + 4;
+
+          if (idx !== -1) {
+            netId = this.resolvePin(keypadComp.id, idx.toString());
+          }
+        }
+
+        // Fallback: ROW1, COL1
+        if (!netId) {
+          const alt = name.replace('R', 'ROW').replace('C', 'COL');
+          netId = this.resolvePin(keypadComp.id, alt);
+        }
+
         if (netId) {
           const mcuPin = this.netToMcuPin.get(netId);
           if (mcuPin) {
             pins.set(name, mcuPin);
+            console.log(`[Simulator] Keypad ${name} -> Port ${mcuPin.port} Bit ${mcuPin.bit}`);
           }
+        } else {
+          console.warn(`[Simulator] Keypad ${name} NOT connected.`);
         }
       }
 
@@ -1095,14 +1188,7 @@ export class CircuitSimulator {
     this.dht22?.setEnvironment(temp, hum);
   }
 
-  setRotaryEncoderRotate(compId: string, direction: 'CW' | 'CCW') {
-    if (direction === 'CW') this.rotaryEncoder?.rotateCW();
-    else this.rotaryEncoder?.rotateCCW();
-  }
 
-  setRotaryEncoderPress(compId: string, pressed: boolean) {
-    this.rotaryEncoder?.pressButton(pressed);
-  }
 
   setHeartBeatRate(compId: string, bpm: number) {
     if (this.heartBeatSensor) {
@@ -1162,6 +1248,61 @@ export class CircuitSimulator {
         }
       }
 
+      // Slide Switch / Toggle Switch Logic
+      if (this.componentTypes.get(id)?.includes('slide-switch') || this.componentTypes.get(id)?.includes('toggle-switch')) {
+        let val = detail;
+        if (typeof detail === 'object' && detail !== null && 'value' in detail) {
+          val = detail.value;
+        }
+        console.log(`[Simulator] Slide Switch ${id} State: ${val}`);
+
+        // Pins: 1 (Left), 2 (Common), 3 (Right)
+        // Check what 1 and 3 are connected to (VCC or GND)
+        const leftNet = this.resolvePin(id, '1');
+        const rightNet = this.resolvePin(id, '3');
+
+        // Tristate: true (High), false (Low), null (Floating)
+        let leftState: boolean | null = null;
+        let rightState: boolean | null = null;
+
+        if (leftNet) {
+          if (this.vccNets.has(leftNet)) leftState = true;
+          else if (this.gndNets.has(leftNet)) leftState = false;
+        }
+        if (rightNet) {
+          if (this.vccNets.has(rightNet)) rightState = true;
+          else if (this.gndNets.has(rightNet)) rightState = false;
+        }
+
+        // Determine which state to forward to COM (2) based on switch position
+        // Value: false/0 -> Left (1 connected to 2)
+        // Value: true/1 -> Right (3 connected to 2)
+        const activeState = val ? rightState : leftState;
+
+        console.log(`[Simulator] Switch ${id} State: ${val} Active: ${activeState}`);
+
+        // Drive COM pin (2)
+        const comNet = this.resolvePin(id, '2');
+        if (comNet) {
+          const mcuPin = this.netToMcuPin.get(comNet);
+          if (activeState !== null) {
+            // Concrete High/Low connection
+            this.setInput(id, '2', activeState);
+          } else if (mcuPin) {
+            // Floating -> Check if MCU Pin is Input Pullup
+            let portName: 'B' | 'C' | 'D' | null = null;
+            if (mcuPin.port === PORT_B_ADDR) portName = 'B';
+            else if (mcuPin.port === PORT_C_ADDR) portName = 'C';
+            else if (mcuPin.port === PORT_D_ADDR) portName = 'D';
+
+            const isPullup = portName ? this.isInputPullup(portName, mcuPin.bit) : false;
+
+            this.setInput(id, '2', isPullup);
+            console.log(`[Simulator] Switch Floating -> Pullup: ${isPullup}`);
+          }
+        }
+      }
+
       // PIR Sensor Logic
       if (this.componentTypes.get(id)?.includes('pir')) {
         const isMotion = detail.value === true;
@@ -1179,11 +1320,7 @@ export class CircuitSimulator {
         this.setDHT22Environment(id, detail.temp, detail.hum);
       }
       if (detail.pressed !== undefined) {
-        this.setRotaryEncoderPress(id, detail.pressed);
         this.setHeartBeatActive(id, detail.pressed);
-      }
-      if (detail.rotate !== undefined) {
-        this.setRotaryEncoderRotate(id, detail.rotate);
       }
       if (detail.accelX !== undefined) {
         // MPU6050
@@ -1201,6 +1338,16 @@ export class CircuitSimulator {
       this.setHeartBeatRate(id, detail.bpm);
     } else if (name === 'remote-button') {
       this.triggerIRReceiver(id, detail.code);
+    } else if (name === 'button-press') {
+      if (detail.key) {
+        this.setKeypadPress(id, detail.key, true);
+      }
+    } else if (name === 'button-release') {
+      if (detail.key) {
+        this.setKeypadPress(id, detail.key, false);
+      }
+    } else if (name === 'attribute-change') {
+      // Removed Rotary Encoder Logic
     } else if (name === 'mousedown' || name === 'mouseup') {
       // Flame sensor or generic button
       // Flame sensor sends { voltage, analogValue }

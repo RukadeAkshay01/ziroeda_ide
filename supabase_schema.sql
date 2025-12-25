@@ -13,6 +13,7 @@ DROP FUNCTION IF EXISTS update_comments_count CASCADE;
 DROP FUNCTION IF EXISTS update_forks_count CASCADE;
 DROP FUNCTION IF EXISTS increment_views CASCADE;
 DROP FUNCTION IF EXISTS increment_forks CASCADE;
+
 -- 2. CREATE TABLES
 -- Projects
 CREATE TABLE public.projects (
@@ -30,8 +31,12 @@ CREATE TABLE public.projects (
   likes_count int DEFAULT 0,
   views_count int DEFAULT 0,
   comments_count int DEFAULT 0,
+  preview_url text,
+  chat_history jsonb,
+  public_access text DEFAULT 'private',
   design jsonb
 );
+
 -- Versions
 CREATE TABLE public.project_versions (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -60,17 +65,16 @@ CREATE TABLE public.likes (
   created_at timestamp WITH time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   UNIQUE(project_id, user_id)
 );
--- 3. CREATE FUNCTIONS & TRIGGERS
--- Auto-update Likes Count
+
+-- 3. FUNCTIONS & TRIGGERS
+-- Update Likes Count
 CREATE OR REPLACE FUNCTION update_likes_count()
 RETURNS TRIGGER AS $$
 BEGIN
   IF (TG_OP = 'INSERT') THEN
     UPDATE public.projects SET likes_count = likes_count + 1 WHERE id = NEW.project_id;
-    RETURN NEW;
   ELSIF (TG_OP = 'DELETE') THEN
     UPDATE public.projects SET likes_count = likes_count - 1 WHERE id = OLD.project_id;
-    RETURN OLD;
   END IF;
   RETURN NULL;
 END;
@@ -78,16 +82,14 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER on_like_change
 AFTER INSERT OR DELETE ON public.likes
 FOR EACH ROW EXECUTE PROCEDURE update_likes_count();
--- Auto-update Comments Count
+-- Update Comments Count
 CREATE OR REPLACE FUNCTION update_comments_count()
 RETURNS TRIGGER AS $$
 BEGIN
   IF (TG_OP = 'INSERT') THEN
     UPDATE public.projects SET comments_count = comments_count + 1 WHERE id = NEW.project_id;
-    RETURN NEW;
   ELSIF (TG_OP = 'DELETE') THEN
     UPDATE public.projects SET comments_count = comments_count - 1 WHERE id = OLD.project_id;
-    RETURN OLD;
   END IF;
   RETURN NULL;
 END;
@@ -95,7 +97,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER on_comment_change
 AFTER INSERT OR DELETE ON public.comments
 FOR EACH ROW EXECUTE PROCEDURE update_comments_count();
--- Auto-update Forks Count
+-- Update Forks Count
 CREATE OR REPLACE FUNCTION update_forks_count()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -117,13 +119,27 @@ BEGIN
   WHERE id = row_id;
 END;
 $$ LANGUAGE plpgsql;
+
 -- 4. DISABLE SECURITY (Make it Public)
 ALTER TABLE public.projects DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_versions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.likes DISABLE ROW LEVEL SECURITY;
 
+-- 5. STORAGE BUCKET (Create 'project_previews' bucket)
+-- Note: 'storage' schema access requires appropriate privileges.
+-- Usually run in SQL Editor.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('project_previews', 'project_previews', true)
+ON CONFLICT (id) DO NOTHING;
 
-ALTER TABLE projects ADD COLUMN chat_history jsonb;
+-- Policies for Storage (Optional, if RLS is enabled on storage.objects)
+-- For development, we might not need this if storage has RLS disabled or default policies.
+-- But it is good practice.
+CREATE POLICY "Public Access"
+ON storage.objects FOR SELECT
+USING ( bucket_id = 'project_previews' );
 
-ALTER TABLE projects ADD COLUMN public_access text DEFAULT 'private';
+CREATE POLICY "Public Upload"
+ON storage.objects FOR INSERT
+WITH CHECK ( bucket_id = 'project_previews' );

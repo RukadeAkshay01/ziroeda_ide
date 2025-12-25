@@ -17,6 +17,7 @@ interface UseCanvasInteractionsProps {
   onConnectionCreated?: (sourceId: string, sourcePin: string, targetId: string, targetPin: string) => void;
   zoomAtPoint: (x: number, y: number, factor: number) => void;
   isReadOnly?: boolean;
+  isSimulating?: boolean;
 }
 
 export const useCanvasInteractions = ({
@@ -32,7 +33,8 @@ export const useCanvasInteractions = ({
   onDragEnd,
   onConnectionCreated,
   zoomAtPoint,
-  isReadOnly = false
+  isReadOnly = false,
+  isSimulating = false
 }: UseCanvasInteractionsProps) => {
 
   const lastMousePos = useRef({ x: 0, y: 0 });
@@ -71,6 +73,10 @@ export const useCanvasInteractions = ({
   };
 
   const handleComponentMouseDown = (e: React.MouseEvent, id: string) => {
+    if (isSimulating) {
+      e.stopPropagation(); // Stop Canvas from Panning
+      return; // Allow interaction with component (e.g. knob)
+    }
     e.stopPropagation();
     if (drawingState) return;
     onSelectComponent(id);
@@ -288,6 +294,7 @@ export const useCanvasInteractions = ({
 
   // Component Touch Handler (to be attached to components)
   const handleComponentTouchStart = (e: React.TouchEvent, id: string) => {
+    if (isSimulating) return; // Allow interaction
     // We DO NOT stop propagation so that the container can see if it's a multi-touch (pinch) event.
     // e.stopPropagation(); 
 

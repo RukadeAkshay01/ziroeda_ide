@@ -12,8 +12,12 @@
     "@google/genai": "latest",
     "@supabase/supabase-js": "^2.89.0",
     "avr8js": "latest",
+    "dom-to-image-more": "^3.7.2",
     "firebase": "^12.7.0",
+    "html-to-image": "^1.11.13",
+    "html2canvas": "^1.4.1",
     "lucide-react": "0.294.0",
+    "modern-screenshot": "^4.6.7",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "uuid": "9.0.1"

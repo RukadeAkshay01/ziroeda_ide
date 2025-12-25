@@ -23,7 +23,51 @@ export interface ProjectData {
         connections: any[];
         code: string;
     };
+    preview_url?: string;
 }
+
+export const uploadProjectPreview = async (projectId: string, blob: Blob): Promise<string | null> => {
+    try {
+        const timestamp = Date.now();
+        const fileName = `${projectId}_${timestamp}.png`;
+
+        // 1. Cleanup old previews for this project to save storage
+        const { data: listData } = await supabase.storage
+            .from('project_previews')
+            .list('', { search: projectId });
+
+        if (listData && listData.length > 0) {
+            const filesToRemove = listData.map(f => f.name);
+            await supabase.storage
+                .from('project_previews')
+                .remove(filesToRemove);
+        }
+
+        // 2. Upload new preview with unique name
+        const { error } = await supabase.storage
+            .from('project_previews')
+            .upload(fileName, blob, {
+                contentType: 'image/png',
+                upsert: false // New file, so no upsert needed
+            });
+
+        if (error) {
+            console.error('Error uploading preview:', error);
+            return null;
+        }
+
+        // 3. Get Public URL
+        const { data: { publicUrl } } = supabase.storage
+            .from('project_previews')
+            .getPublicUrl(fileName);
+
+        return publicUrl;
+
+    } catch (e) {
+        console.error("Upload exception:", e);
+        return null;
+    }
+};
 
 export interface ProjectVersion {
     id: string;
@@ -52,7 +96,8 @@ export const saveProject = async (project: ProjectData) => {
                 public_access: project.public_access || 'private',
                 tags: project.tags || [],
                 chat_history: project.chat_history || [],
-                design: project.design
+                design: project.design,
+                preview_url: project.preview_url
             }
         ])
         .select();

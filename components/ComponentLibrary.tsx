@@ -40,7 +40,6 @@ const CATEGORIES: Category[] = [
       { id: 'wokwi-slide-switch', name: 'Slide Switch', icon: <ToggleLeft className="w-4 h-4" /> },
       { id: 'wokwi-potentiometer', name: 'Potentiometer', icon: <Sliders className="w-4 h-4" /> },
       { id: 'wokwi-membrane-keypad', name: 'Keypad 4x4', icon: <Keyboard className="w-4 h-4" /> },
-      { id: 'wokwi-ky-040', name: 'Rotary Encoder', icon: <Disc className="w-4 h-4" /> },
     ]
   },
   {
