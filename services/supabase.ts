@@ -25,6 +25,20 @@ export interface ProjectData {
     };
 }
 
+export interface ProjectVersion {
+    id: string;
+    project_id: string;
+    version_number: number;
+    created_at: string;
+    design: {
+        components: any[];
+        connections: any[];
+        code: string;
+    };
+    preview_url?: string;
+    commit_message?: string;
+}
+
 export const saveProject = async (project: ProjectData) => {
     const { data, error } = await supabase
         .from('projects')
@@ -95,4 +109,53 @@ export const loadProjects = async (userId: string) => {
         throw error;
     }
     return data;
+};
+
+export const fetchProjectVersions = async (projectId: string) => {
+    const { data, error } = await supabase
+        .from('project_versions')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('version_number', { ascending: false });
+
+    if (error) {
+        console.error("Error fetching project versions:", error);
+        throw error;
+    }
+    return data as ProjectVersion[];
+};
+
+export const createProjectVersion = async (projectId: string, design: any, commitMessage?: string) => {
+    // 1. Get current latest version number
+    const { data: latestVersion, error: fetchError } = await supabase
+        .from('project_versions')
+        .select('version_number')
+        .eq('project_id', projectId)
+        .order('version_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (fetchError) throw fetchError;
+
+    const nextVersionNumber = (latestVersion?.version_number || 0) + 1;
+
+    // 2. Insert new version
+    const { data, error } = await supabase
+        .from('project_versions')
+        .insert([
+            {
+                project_id: projectId,
+                version_number: nextVersionNumber,
+                design: design, // design JSON
+                commit_message: commitMessage || `Version ${nextVersionNumber}`
+            }
+        ])
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error creating project version:", error);
+        throw error;
+    }
+    return data as ProjectVersion;
 };

@@ -11,6 +11,7 @@ interface UseAutosaveProps {
     setProjectId: (id: string) => void;
     projectName: string;
     messages: any[];
+    isPublic?: boolean;
     isReadOnly?: boolean;
 }
 
@@ -23,6 +24,7 @@ export const useAutosave = ({
     setProjectId,
     projectName,
     messages,
+    isPublic = false,
     isReadOnly = false
 }: UseAutosaveProps) => {
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
@@ -59,7 +61,7 @@ export const useAutosave = ({
                     description: "Autosaved project",
                     owner_id: user.uid,
                     owner_name: user.displayName || "Anonymous",
-                    is_public: false,
+                    is_public: isPublic,
                     chat_history: messages,
                     design: {
                         components,
@@ -92,7 +94,7 @@ export const useAutosave = ({
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [components, connections, code, user, projectId, projectName, messages, isReadOnly]); // Dependencies that trigger save
+    }, [components, connections, code, user, projectId, projectName, messages, isPublic, isReadOnly]); // Dependencies that trigger save
 
     return { saveStatus, lastSavedAt };
 };

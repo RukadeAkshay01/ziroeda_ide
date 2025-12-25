@@ -22,7 +22,8 @@ import LoginOverlay from './components/LoginOverlay';
 import { useCircuitHistory } from './hooks/useCircuitHistory';
 import { useSimulationRunner } from './hooks/useSimulationRunner';
 import { useComponentActions } from './hooks/useComponentActions';
-import { saveProject, loadProject } from './services/supabase';
+import { saveProject, loadProject, fetchProjectVersions, createProjectVersion, ProjectVersion } from './services/supabase';
+import VersionHistoryPanel from './components/VersionHistoryPanel';
 
 import { useAutosave } from './hooks/useAutosave';
 
@@ -34,6 +35,7 @@ const App: React.FC = () => {
   // Project State
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string>("Untitled Project");
+  const [isPublic, setIsPublic] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
 
   useEffect(() => {
@@ -65,6 +67,7 @@ const App: React.FC = () => {
     setProjectId,
     projectName,
     messages,
+    isPublic,
     isReadOnly
   });
 
@@ -104,8 +107,12 @@ const App: React.FC = () => {
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
+
   const [isBOMOpen, setIsBOMOpen] = useState(false);
   const [isSerialMonitorOpen, setIsSerialMonitorOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [projectVersions, setProjectVersions] = useState<ProjectVersion[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   // Responsive UI State
   const [isLibraryOpen, setIsLibraryOpen] = useState(true);
@@ -217,6 +224,7 @@ const App: React.FC = () => {
             setArduinoCode(project.design.code || '');
             setProjectId(urlProjectId);
             setProjectName(project.name || "Untitled Project");
+            setIsPublic(project.is_public || false);
 
             // Restore chat history if available
             if (project.chat_history && project.chat_history.length > 0) {
@@ -346,6 +354,53 @@ const App: React.FC = () => {
     handleSave();
   };
 
+  const handleToggleHistory = async () => {
+    const newState = !isHistoryOpen;
+    setIsHistoryOpen(newState);
+    if (newState && projectId) {
+      setIsHistoryLoading(true);
+      try {
+        const versions = await fetchProjectVersions(projectId);
+        setProjectVersions(versions);
+      } catch (error) {
+        console.error("Failed to load versions", error);
+      } finally {
+        setIsHistoryLoading(false);
+      }
+    }
+  };
+
+  const handleCreateVersion = async (name: string) => {
+    if (!projectId) {
+      alert("Please save the project first.");
+      return;
+    }
+    try {
+      const design = {
+        components,
+        connections,
+        code: arduinoCode
+      };
+      await createProjectVersion(projectId, design, name);
+      // Refresh list
+      const versions = await fetchProjectVersions(projectId);
+      setProjectVersions(versions);
+    } catch (error) {
+      console.error("Failed to create version", error);
+      alert("Failed to create version.");
+    }
+  };
+
+  const handleLoadVersion = (version: ProjectVersion) => {
+    if (confirm("Load this version? Unsaved changes to current state will be lost.")) {
+      setComponents(version.design.components || []);
+      setConnections(version.design.connections || []);
+      setArduinoCode(version.design.code || '');
+      setIsHistoryOpen(false);
+      saveToHistory(version.design.components || [], version.design.connections || []);
+    }
+  };
+
   const selectedComponent = components.find(c => c.id === selectedComponentId);
 
   if (authLoading) {
@@ -390,7 +445,7 @@ const App: React.FC = () => {
           onViewSerialMonitor={() => setIsSerialMonitorOpen(prev => !prev)}
           onViewSchematic={() => alert("Schematic View: Feature Coming Soon")}
           onViewBOM={() => setIsBOMOpen(prev => !prev)}
-          onSave={handleSave}
+          onHistoryClick={handleToggleHistory}
           isSimulating={isSimulating}
           isPaused={isPaused}
           isCompiling={isCompiling}
@@ -441,6 +496,17 @@ const App: React.FC = () => {
           canRedo={historyIndex < historyLength - 1}
         />
       </div>
+
+      {isHistoryOpen && (
+        <VersionHistoryPanel
+          versions={projectVersions}
+          onCreateVersion={handleCreateVersion}
+          onLoadVersion={handleLoadVersion}
+          isLoading={isHistoryLoading}
+          onClose={() => setIsHistoryOpen(false)}
+          isReadOnly={isReadOnly}
+        />
+      )}
 
       {/* --- DESKTOP: Chat Sidebar --- */}
       <div className="hidden md:block w-96 flex-shrink-0 z-30 h-full border-l border-dark-700 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">

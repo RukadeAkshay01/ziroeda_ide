@@ -11,7 +11,8 @@ import {
   Workflow,
   ClipboardList,
   Loader2,
-  Save
+  Save,
+  History
 } from 'lucide-react';
 
 interface UpperToolbarProps {
@@ -21,8 +22,7 @@ interface UpperToolbarProps {
   onViewSerialMonitor: () => void;
   onViewSchematic: () => void;
   onViewBOM: () => void;
-  onViewBOM: () => void;
-  onSave: () => void;
+  onHistoryClick: () => void;
   isSimulating: boolean;
   isPaused?: boolean;
   isCompiling: boolean;
@@ -38,7 +38,7 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
   onViewSerialMonitor,
   onViewSchematic,
   onViewBOM,
-  onSave,
+  onHistoryClick,
   isSimulating,
   isPaused = false,
   isCompiling,
@@ -164,9 +164,8 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
 
         <ToolbarButton
           icon={Save}
-          label="Save"
-          onClick={onSave}
-          disabled={isReadOnly}
+          label="History"
+          onClick={onHistoryClick}
         />
 
         {/* Save Status Indicator - Moved to ChatInterface */}

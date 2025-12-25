@@ -99,7 +99,7 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
               className="absolute -top-8 left-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap border border-slate-700"
               style={{ transform: `translateX(-50%) rotate(${-rotation}deg) scaleX(${flipX}) scaleY(${flipY})` }}
             >
-              {comp.label || comp.type}
+              {comp.label || comp.type.replace(/^wokwi-/, '')}
             </div>
             <ComponentRenderer ref={setComponentRef(comp.id)} component={comp} />
           </div>
