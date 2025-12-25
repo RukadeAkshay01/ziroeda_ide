@@ -9,6 +9,7 @@ interface UseAutosaveProps {
     user: User | null;
     projectId: string | null;
     setProjectId: (id: string) => void;
+    projectName: string;
 }
 
 export const useAutosave = ({
@@ -17,7 +18,8 @@ export const useAutosave = ({
     code,
     user,
     projectId,
-    setProjectId
+    setProjectId,
+    projectName
 }: UseAutosaveProps) => {
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
     const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -48,7 +50,7 @@ export const useAutosave = ({
         timeoutRef.current = setTimeout(async () => {
             try {
                 const projectData: ProjectData = {
-                    name: "Untitled Project", // TODO: Get from state
+                    name: projectName || "Untitled Project",
                     description: "Autosaved project",
                     owner_id: user.uid,
                     owner_name: user.displayName || "Anonymous",
@@ -84,7 +86,7 @@ export const useAutosave = ({
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [components, connections, code, user, projectId]); // Dependencies that trigger save
+    }, [components, connections, code, user, projectId, projectName]); // Dependencies that trigger save
 
     return { saveStatus, lastSavedAt };
 };

@@ -70,6 +70,7 @@ export interface ChatMessage {
 
 export interface DesignResponse {
   explanation: string;
+  projectName?: string;
   arduinoCode: string;
   components: CircuitComponent[];
   connections: WokwiConnection[];

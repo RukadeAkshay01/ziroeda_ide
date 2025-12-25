@@ -16,8 +16,8 @@ import { STATIC_COMPONENT_DATA } from "../utils/static-component-data";
  * Note: We strictly strip coordinates and visual data here to save tokens.
  */
 const COMPONENT_DOCS = Object.entries(STATIC_COMPONENT_DATA).map(([type, spec]) => {
-    const pinList = spec.pins.map(p => p.name).join(', ');
-    return `- "${type}": Valid Pins: [${pinList}]`;
+  const pinList = spec.pins.map(p => p.name).join(', ');
+  return `- "${type}": Valid Pins: [${pinList}]`;
 }).join('\n');
 
 /**
@@ -50,6 +50,7 @@ ${COMPONENT_DOCS}
   - Use Green/Blue/Yellow for signals.
 - **Placement:** Do not worry about X/Y coordinates. The layout engine will handle spatial arrangement.
 - **Output:** Valid JSON. 
+- **Project Name:** Generate a short, creative, and relevant name for the project based on the circuit design (e.g., "Blinking LED", "Smart Home Sensor").
 `;
 
 /**
@@ -60,6 +61,7 @@ const circuitSchema: Schema = {
   type: Type.OBJECT,
   properties: {
     explanation: { type: Type.STRING },
+    projectName: { type: Type.STRING, description: "A short, creative name for the project" },
     arduinoCode: { type: Type.STRING, description: "Full Arduino C++ code for the circuit" },
     components: {
       type: Type.ARRAY,
@@ -97,13 +99,13 @@ const circuitSchema: Schema = {
 };
 
 export interface ServiceResult {
-    design: DesignResponse;
-    rawRequest: any;
-    rawResponse: string;
+  design: DesignResponse;
+  rawRequest: any;
+  rawResponse: string;
 }
 
 export const generateCircuitDesign = async (
-  history: ChatMessage[], 
+  history: ChatMessage[],
   currentComponents: CircuitComponent[],
   currentConnections: WokwiConnection[]
 ): Promise<ServiceResult> => {
@@ -117,12 +119,12 @@ export const generateCircuitDesign = async (
   // 1. Strip X/Y coordinates to save tokens (AI doesn't need them).
   // 2. Include attributes (e.g., resistor values, LED colors) as they are semantically important.
   const stateContext = `CURRENT CIRCUIT STATE:
-Components: ${JSON.stringify(currentComponents.map(c => ({ 
-    id: c.id, 
-    type: c.type, 
+Components: ${JSON.stringify(currentComponents.map(c => ({
+    id: c.id,
+    type: c.type,
     label: c.label,
-    attributes: c.attributes 
-})))}
+    attributes: c.attributes
+  })))}
 Connections: ${JSON.stringify(currentConnections)}
 ---`;
 
@@ -151,11 +153,11 @@ Connections: ${JSON.stringify(currentConnections)}
     // Hydrate the components with default coordinates before passing to placement agent
     // This bridges the gap between the Coordinate-less AI response and the coordinate-dependent App state
     let finalComponents = (logicData.components || []).map(c => ({
-        ...c,
-        x: 0,
-        y: 0,
-        rotation: c.rotation || 0,
-        attributes: c.attributes || {}
+      ...c,
+      x: 0,
+      y: 0,
+      rotation: c.rotation || 0,
+      attributes: c.attributes || {}
     })) as CircuitComponent[];
 
     let finalConnections = logicData.connections || [];
@@ -163,9 +165,9 @@ Connections: ${JSON.stringify(currentConnections)}
     if (finalComponents.length > 0) {
       // 1. Use the deterministic placement engine to assign X/Y based on logical flow
       finalComponents = await optimizePlacement(
-        finalComponents, 
-        finalConnections, 
-        currentComponents 
+        finalComponents,
+        finalConnections,
+        currentComponents
       );
 
       // 2. Run Wiring Optimizer to swap pins on symmetric components (Resistors, Pushbuttons)
@@ -176,14 +178,15 @@ Connections: ${JSON.stringify(currentConnections)}
     }
 
     return {
-        design: { 
-            explanation: logicData.explanation || "",
-            arduinoCode: logicData.arduinoCode || "",
-            connections: finalConnections,
-            components: finalComponents 
-        },
-        rawRequest: contents,
-        rawResponse: text
+      design: {
+        explanation: logicData.explanation || "",
+        projectName: logicData.projectName,
+        arduinoCode: logicData.arduinoCode || "",
+        connections: finalConnections,
+        components: finalComponents
+      },
+      rawRequest: contents,
+      rawResponse: text
     };
 
   } catch (error) {

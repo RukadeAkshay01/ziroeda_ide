@@ -33,6 +33,7 @@ const App: React.FC = () => {
 
   // Project State
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState<string>("Untitled Project");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -60,7 +61,8 @@ const App: React.FC = () => {
     code: arduinoCode,
     user,
     projectId,
-    setProjectId
+    setProjectId,
+    projectName
   });
 
   // Hooks
@@ -211,6 +213,7 @@ const App: React.FC = () => {
             setConnections(project.design.connections || []);
             setArduinoCode(project.design.code || '');
             setProjectId(urlProjectId);
+            setProjectName(project.name || "Untitled Project");
 
             // Add to history
             saveToHistory(project.design.components || [], project.design.connections || []);
@@ -238,6 +241,12 @@ const App: React.FC = () => {
         setComponents(design.components);
         setConnections(design.connections || []);
         setArduinoCode(design.arduinoCode || '');
+
+        // Update project name if AI suggests one and current name is "Untitled Project"
+        if (design.projectName && (projectName === "Untitled Project" || projectName === "")) {
+          setProjectName(design.projectName);
+        }
+
         saveToHistory(design.components, design.connections || []);
       }
 
@@ -268,6 +277,7 @@ const App: React.FC = () => {
     setConnections([]);
     setArduinoCode('');
     setSelectedComponentId(null);
+    setProjectName("Untitled Project");
     setMessages([{
       id: uuidv4(),
       role: 'assistant',
@@ -284,7 +294,7 @@ const App: React.FC = () => {
 
     try {
       const projectData = {
-        name: "Untitled Project", // TODO: Add UI for project name
+        name: projectName,
         description: "Created with ZiroEDA",
         owner_id: user.uid,
         owner_name: user.displayName || "Anonymous",
@@ -359,8 +369,6 @@ const App: React.FC = () => {
           isCompiling={isCompiling}
           toggleLibrary={() => setIsLibraryOpen(!isLibraryOpen)}
           isLibraryOpen={isLibraryOpen}
-          saveStatus={saveStatus}
-          lastSavedAt={lastSavedAt}
         />
 
         <div className="flex-1 relative bg-grid overflow-hidden">
@@ -412,6 +420,11 @@ const App: React.FC = () => {
           onSendMessage={handleSendMessage}
           onClear={handleClear}
           isProcessing={isProcessing}
+          projectName={projectName}
+          onProjectNameChange={setProjectName}
+          user={user}
+          saveStatus={saveStatus}
+          lastSavedAt={lastSavedAt}
         />
       </div>
 
@@ -429,6 +442,11 @@ const App: React.FC = () => {
             onSendMessage={handleSendMessage}
             onClear={handleClear}
             isProcessing={isProcessing}
+            projectName={projectName}
+            onProjectNameChange={setProjectName}
+            user={user}
+            saveStatus={saveStatus}
+            lastSavedAt={lastSavedAt}
           />
         </div>
       </div>
