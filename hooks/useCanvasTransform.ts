@@ -105,4 +105,3 @@ export const useCanvasTransform = (containerRef: RefObject<HTMLDivElement | null
     zoomAtPoint
   };
 };
-```
