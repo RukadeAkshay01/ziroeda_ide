@@ -15,7 +15,9 @@ export interface ProjectData {
     owner_id: string;
     owner_name?: string;
     is_public?: boolean;
+    public_access?: 'private' | 'view' | 'edit';
     tags?: string[];
+    chat_history?: any[];
     design: {
         components: any[];
         connections: any[];
@@ -33,7 +35,9 @@ export const saveProject = async (project: ProjectData) => {
                 owner_id: project.owner_id,
                 owner_name: project.owner_name,
                 is_public: project.is_public || false,
+                public_access: project.public_access || 'private',
                 tags: project.tags || [],
+                chat_history: project.chat_history || [],
                 design: project.design
             }
         ])

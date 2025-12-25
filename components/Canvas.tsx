@@ -26,6 +26,7 @@ interface CanvasProps {
   onComponentEvent?: (id: string, name: string, detail: any) => void;
   simulator?: CircuitSimulator;
   isSimulating?: boolean;
+  isReadOnly?: boolean;
 }
 
 export interface CanvasHandle {
@@ -46,7 +47,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
   simulationPinStates,
   onComponentEvent,
   simulator,
-  isSimulating
+  isSimulating,
+  isReadOnly = false
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const componentRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -112,7 +114,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
     onComponentMove,
     onDragEnd,
     onConnectionCreated,
-    zoomAtPoint
+    zoomAtPoint,
+    isReadOnly
   });
 
   // 3. Propagate Simulation States (Legacy - now handled by updateVisuals)

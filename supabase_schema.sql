@@ -1,21 +1,19 @@
 -- ==========================================
 -- ZiroEDA COMPLETE SCHEMA (FRESH INSTALL SAFE)
 -- ==========================================
-
 -- 1. CLEANUP (Safe for fresh projects)
+-- We use CASCADE to automatically remove dependent triggers and foreign keys.
+-- We drop functions separately to ensure a clean slate.
 DROP TABLE IF EXISTS public.likes CASCADE;
 DROP TABLE IF EXISTS public.comments CASCADE;
 DROP TABLE IF EXISTS public.project_versions CASCADE;
 DROP TABLE IF EXISTS public.projects CASCADE;
-
 DROP FUNCTION IF EXISTS update_likes_count CASCADE;
 DROP FUNCTION IF EXISTS update_comments_count CASCADE;
 DROP FUNCTION IF EXISTS update_forks_count CASCADE;
 DROP FUNCTION IF EXISTS increment_views CASCADE;
 DROP FUNCTION IF EXISTS increment_forks CASCADE;
-
 -- 2. CREATE TABLES
-
 -- Projects
 CREATE TABLE public.projects (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -34,7 +32,6 @@ CREATE TABLE public.projects (
   comments_count int DEFAULT 0,
   design jsonb
 );
-
 -- Versions
 CREATE TABLE public.project_versions (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -45,7 +42,6 @@ CREATE TABLE public.project_versions (
   preview_url text,
   commit_message text
 );
-
 -- Comments
 CREATE TABLE public.comments (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -56,7 +52,6 @@ CREATE TABLE public.comments (
   is_resolved boolean DEFAULT false,
   created_at timestamp WITH time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
-
 -- Likes
 CREATE TABLE public.likes (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -65,9 +60,7 @@ CREATE TABLE public.likes (
   created_at timestamp WITH time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
   UNIQUE(project_id, user_id)
 );
-
 -- 3. CREATE FUNCTIONS & TRIGGERS
-
 -- Auto-update Likes Count
 CREATE OR REPLACE FUNCTION update_likes_count()
 RETURNS TRIGGER AS $$
@@ -82,11 +75,9 @@ BEGIN
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER on_like_change
 AFTER INSERT OR DELETE ON public.likes
 FOR EACH ROW EXECUTE PROCEDURE update_likes_count();
-
 -- Auto-update Comments Count
 CREATE OR REPLACE FUNCTION update_comments_count()
 RETURNS TRIGGER AS $$
@@ -101,11 +92,9 @@ BEGIN
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER on_comment_change
 AFTER INSERT OR DELETE ON public.comments
 FOR EACH ROW EXECUTE PROCEDURE update_comments_count();
-
 -- Auto-update Forks Count
 CREATE OR REPLACE FUNCTION update_forks_count()
 RETURNS TRIGGER AS $$
@@ -116,11 +105,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER on_project_fork
 AFTER INSERT ON public.projects
 FOR EACH ROW EXECUTE PROCEDURE update_forks_count();
-
 -- Increment Views RPC
 CREATE OR REPLACE FUNCTION increment_views(row_id uuid)
 RETURNS void AS $$
@@ -130,9 +117,13 @@ BEGIN
   WHERE id = row_id;
 END;
 $$ LANGUAGE plpgsql;
-
 -- 4. DISABLE SECURITY (Make it Public)
 ALTER TABLE public.projects DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_versions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.comments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.likes DISABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE projects ADD COLUMN chat_history jsonb;
+
+ALTER TABLE projects ADD COLUMN public_access text DEFAULT 'private';

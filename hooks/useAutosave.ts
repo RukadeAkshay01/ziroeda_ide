@@ -10,6 +10,8 @@ interface UseAutosaveProps {
     projectId: string | null;
     setProjectId: (id: string) => void;
     projectName: string;
+    messages: any[];
+    isReadOnly?: boolean;
 }
 
 export const useAutosave = ({
@@ -19,7 +21,9 @@ export const useAutosave = ({
     user,
     projectId,
     setProjectId,
-    projectName
+    projectName,
+    messages,
+    isReadOnly = false
 }: UseAutosaveProps) => {
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
     const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -37,6 +41,7 @@ export const useAutosave = ({
         }
 
         if (!user) return;
+        if (isReadOnly) return;
 
         // Set status to unsaved/saving pending
         setSaveStatus('saving');
@@ -55,6 +60,7 @@ export const useAutosave = ({
                     owner_id: user.uid,
                     owner_name: user.displayName || "Anonymous",
                     is_public: false,
+                    chat_history: messages,
                     design: {
                         components,
                         connections,
@@ -86,7 +92,7 @@ export const useAutosave = ({
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [components, connections, code, user, projectId, projectName]); // Dependencies that trigger save
+    }, [components, connections, code, user, projectId, projectName, messages, isReadOnly]); // Dependencies that trigger save
 
     return { saveStatus, lastSavedAt };
 };

@@ -15,7 +15,8 @@ interface UseCanvasInteractionsProps {
   onComponentMove: (id: string, x: number, y: number) => void;
   onDragEnd?: () => void;
   onConnectionCreated?: (sourceId: string, sourcePin: string, targetId: string, targetPin: string) => void;
-  zoomAtPoint: (x: number, y: number, scale: number) => void;
+  zoomAtPoint: (x: number, y: number, factor: number) => void;
+  isReadOnly?: boolean;
 }
 
 export const useCanvasInteractions = ({
@@ -30,7 +31,8 @@ export const useCanvasInteractions = ({
   onComponentMove,
   onDragEnd,
   onConnectionCreated,
-  zoomAtPoint
+  zoomAtPoint,
+  isReadOnly = false
 }: UseCanvasInteractionsProps) => {
 
   const lastMousePos = useRef({ x: 0, y: 0 });
@@ -53,7 +55,10 @@ export const useCanvasInteractions = ({
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0 || e.button === 1) {
+    if (isReadOnly) return; // Disable interactions in read-only mode (except maybe pan/zoom which is handled by transform hook)
+
+    // Only handle left click
+    if (e.button !== 0) return; {
       if (drawingState) {
         setDrawingState(null);
       } else {

@@ -11,7 +11,7 @@ import {
   Workflow,
   ClipboardList,
   Loader2,
-  Share2
+  Save
 } from 'lucide-react';
 
 interface UpperToolbarProps {
@@ -21,12 +21,14 @@ interface UpperToolbarProps {
   onViewSerialMonitor: () => void;
   onViewSchematic: () => void;
   onViewBOM: () => void;
-  onShare: () => void;
+  onViewBOM: () => void;
+  onSave: () => void;
   isSimulating: boolean;
   isPaused?: boolean;
   isCompiling: boolean;
   toggleLibrary: () => void;
   isLibraryOpen: boolean;
+  isReadOnly?: boolean;
 }
 
 const UpperToolbar: React.FC<UpperToolbarProps> = ({
@@ -36,12 +38,13 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
   onViewSerialMonitor,
   onViewSchematic,
   onViewBOM,
-  onShare,
+  onSave,
   isSimulating,
   isPaused = false,
   isCompiling,
   toggleLibrary,
-  isLibraryOpen
+  isLibraryOpen,
+  isReadOnly = false
 }) => {
 
   const ToolbarButton = ({
@@ -160,9 +163,10 @@ const UpperToolbar: React.FC<UpperToolbarProps> = ({
         <div className="hidden sm:block w-px h-8 bg-dark-700 flex-shrink-0 mx-1" />
 
         <ToolbarButton
-          icon={Share2}
-          label="Share"
-          onClick={onShare}
+          icon={Save}
+          label="Save"
+          onClick={onSave}
+          disabled={isReadOnly}
         />
 
         {/* Save Status Indicator - Moved to ChatInterface */}

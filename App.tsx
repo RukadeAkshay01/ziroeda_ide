@@ -34,6 +34,7 @@ const App: React.FC = () => {
   // Project State
   const [projectId, setProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string>("Untitled Project");
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -62,7 +63,9 @@ const App: React.FC = () => {
     user,
     projectId,
     setProjectId,
-    projectName
+    projectName,
+    messages,
+    isReadOnly
   });
 
   // Hooks
@@ -215,6 +218,20 @@ const App: React.FC = () => {
             setProjectId(urlProjectId);
             setProjectName(project.name || "Untitled Project");
 
+            // Restore chat history if available
+            if (project.chat_history && project.chat_history.length > 0) {
+              setMessages(project.chat_history);
+            }
+
+            // Determine Read-Only Status
+            if (user && user.uid === project.owner_id) {
+              setIsReadOnly(false);
+            } else if (project.public_access === 'edit') {
+              setIsReadOnly(false);
+            } else {
+              setIsReadOnly(true);
+            }
+
             // Add to history
             saveToHistory(project.design.components || [], project.design.connections || []);
           }
@@ -223,9 +240,19 @@ const App: React.FC = () => {
           alert("Failed to load project. It might not exist or you don't have permission.");
         }
       };
-      fetchProject();
+      if (user) {
+        fetchProject();
+      } else {
+        // Wait for auth to initialize
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+          if (currentUser) {
+            fetchProject();
+          }
+          unsubscribe();
+        });
+      }
     }
-  }, []); // Run only once on mount
+  }, [user]); // Re-run when user auth state changes
 
   const handleSendMessage = async (text: string) => {
     const userMsg: ChatMessage = { id: uuidv4(), role: 'user', text };
@@ -363,12 +390,13 @@ const App: React.FC = () => {
           onViewSerialMonitor={() => setIsSerialMonitorOpen(prev => !prev)}
           onViewSchematic={() => alert("Schematic View: Feature Coming Soon")}
           onViewBOM={() => setIsBOMOpen(prev => !prev)}
-          onShare={handleShare}
+          onSave={handleSave}
           isSimulating={isSimulating}
           isPaused={isPaused}
           isCompiling={isCompiling}
           toggleLibrary={() => setIsLibraryOpen(!isLibraryOpen)}
           isLibraryOpen={isLibraryOpen}
+          isReadOnly={isReadOnly}
         />
 
         <div className="flex-1 relative bg-grid overflow-hidden">
@@ -387,6 +415,7 @@ const App: React.FC = () => {
             onComponentEvent={handleComponentEvent}
             simulator={getSimulator()}
             isSimulating={isSimulating}
+            isReadOnly={isReadOnly}
           />
 
           {isPropertiesOpen && selectedComponent && (

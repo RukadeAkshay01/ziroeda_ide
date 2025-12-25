@@ -20,7 +20,8 @@ interface Category {
 }
 
 interface ComponentLibraryProps {
-  onAddComponent: (type: ComponentType) => void;
+  onAddComponent: (type: string) => void;
+  isReadOnly?: boolean;
 }
 
 const CATEGORIES: Category[] = [
@@ -78,7 +79,7 @@ const CATEGORIES: Category[] = [
   }
 ];
 
-const ComponentLibrary: React.FC<ComponentLibraryProps> = ({ onAddComponent }) => {
+const ComponentLibrary: React.FC<ComponentLibraryProps> = ({ onAddComponent, isReadOnly = false }) => {
   const [search, setSearch] = useState('');
 
   const filteredCategories = CATEGORIES.map(cat => ({
@@ -99,6 +100,7 @@ const ComponentLibrary: React.FC<ComponentLibraryProps> = ({ onAddComponent }) =
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-dark-800 border border-dark-700 rounded-md py-1.5 pl-10 pr-3 text-sm text-gray-300 focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 transition-all"
+            disabled={isReadOnly}
           />
         </div>
       </div>
@@ -114,10 +116,11 @@ const ComponentLibrary: React.FC<ComponentLibraryProps> = ({ onAddComponent }) =
               {cat.items.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => onAddComponent(item.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-dark-800 group transition-all"
+                  onClick={() => !isReadOnly && onAddComponent(item.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 group transition-all ${isReadOnly ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:text-white hover:bg-dark-800'}`}
+                  disabled={isReadOnly}
                 >
-                  <div className="w-8 h-8 rounded-lg bg-dark-800 flex items-center justify-center text-gray-500 group-hover:text-brand-400 border border-dark-700 group-hover:border-brand-500/30 transition-all shadow-sm">
+                  <div className={`w-8 h-8 rounded-lg bg-dark-800 flex items-center justify-center text-gray-500 border border-dark-700 transition-all shadow-sm ${isReadOnly ? '' : 'group-hover:text-brand-400 group-hover:border-brand-500/30'}`}>
                     {item.icon}
                   </div>
                   <span className="font-medium truncate">{item.name}</span>
