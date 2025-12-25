@@ -42,6 +42,7 @@ export const useCanvasInteractions = ({
   // Touch State
   const lastTouchDistance = useRef<number | null>(null);
   const isPinching = useRef(false);
+  const componentHandledTouch = useRef(false);
 
   // State
   const [dragMode, setDragMode] = useState<DragMode>('IDLE');
@@ -206,12 +207,16 @@ export const useCanvasInteractions = ({
       lastTouchDistance.current = getDistance(e.touches[0], e.touches[1]);
       setDragMode('IDLE'); // Stop panning/dragging if zooming
     } else if (e.touches.length === 1) {
+      // Check if component handled it first
+      if (componentHandledTouch.current) {
+        componentHandledTouch.current = false;
+        return;
+      }
+
       // Pan or Drag Start
       isPinching.current = false;
       const touch = e.touches[0];
 
-      // Check if touching a component (simple hit test or rely on component touch handler)
-      // For now, assume PAN unless component handler fired
       if (dragMode === 'IDLE') {
         setDragMode('PAN');
         lastMousePos.current = { x: touch.clientX, y: touch.clientY };
@@ -278,8 +283,13 @@ export const useCanvasInteractions = ({
 
   // Component Touch Handler (to be attached to components)
   const handleComponentTouchStart = (e: React.TouchEvent, id: string) => {
-    e.stopPropagation();
+    // We DO NOT stop propagation so that the container can see if it's a multi-touch (pinch) event.
+    // e.stopPropagation(); 
+
     if (e.touches.length !== 1) return;
+
+    // Mark that we handled this touch so the container doesn't start PAN
+    componentHandledTouch.current = true;
 
     const touch = e.touches[0];
     onSelectComponent(id);

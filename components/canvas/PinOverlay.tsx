@@ -22,18 +22,18 @@ const PinOverlay: React.FC<PinOverlayProps> = ({
     components.forEach(comp => {
       const pins = getAllPinPositions(comp, layoutData);
       pins.forEach(pin => {
-         const isDrawingSource = drawingState?.componentId === comp.id && drawingState?.pinName === pin.name;
-         areas.push(
-           <div
-             key={`${comp.id}-${pin.name}`}
-             className={`absolute w-4 h-4 rounded-full cursor-crosshair transform -translate-x-1/2 -translate-y-1/2 z-50 transition-all duration-200 
+        const isDrawingSource = drawingState?.componentId === comp.id && drawingState?.pinName === pin.name;
+        areas.push(
+          <div
+            key={`${comp.id}-${pin.name}`}
+            className={`absolute w-2.5 h-2.5 rounded-full cursor-crosshair transform -translate-x-1/2 -translate-y-1/2 z-50 transition-all duration-200 
                ${isDrawingSource ? 'bg-green-500 scale-125 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'opacity-0 hover:opacity-100 bg-cyan-400/50 hover:bg-cyan-400 hover:scale-125 hover:shadow-[0_0_8px_cyan]'}
              `}
-             style={{ left: pin.x, top: pin.y }}
-             title={`${comp.label || comp.type}: ${pin.name}`}
-             onMouseDown={(e) => onPinClick(e, comp.id, pin.name, pin.x, pin.y)}
-           />
-         );
+            style={{ left: pin.x, top: pin.y }}
+            title={`${comp.label || comp.type}: ${pin.name}`}
+            onMouseDown={(e) => onPinClick(e, comp.id, pin.name, pin.x, pin.y)}
+          />
+        );
       });
     });
     return areas;
