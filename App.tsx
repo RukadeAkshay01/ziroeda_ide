@@ -304,7 +304,7 @@ const App: React.FC = () => {
       window.history.replaceState({}, '', newUrl);
     }
 
-    if (!urlProjectId && !prompt) {
+    if (!urlProjectId && !prompt && initializationStatus === 'initializing') {
       window.location.href = 'https://ziroeda.com';
       return;
     }
