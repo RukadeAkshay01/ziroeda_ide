@@ -15,7 +15,7 @@ import { ChatMessage, CircuitComponent, WokwiConnection } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageSquare } from 'lucide-react';
 
-import { auth } from './services/firebase';
+import { auth, signInWithGoogle } from './services/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import LoginOverlay from './components/LoginOverlay';
 
@@ -517,7 +517,7 @@ const App: React.FC = () => {
   const selectedComponent = components.find(c => c.id === selectedComponentId);
 
   return (
-    <ProjectGuard status={initializationStatus}>
+    <ProjectGuard status={initializationStatus} onLogin={signInWithGoogle}>
       <div className="flex h-[100dvh] w-screen overflow-hidden bg-dark-900 text-white font-sans relative">
         {!user && <LoginOverlay />}
 
