@@ -284,7 +284,16 @@ const App: React.FC = () => {
       window.history.replaceState({}, '', newUrl);
     }
 
+    if (!urlProjectId) {
+      const lastProject = localStorage.getItem('ziro_last_project_id');
+      if (lastProject) {
+        window.location.search = `?projectId=${lastProject}`;
+        return;
+      }
+    }
+
     if (urlProjectId) {
+      localStorage.setItem('ziro_last_project_id', urlProjectId);
       const fetchProject = async () => {
         try {
           const project = await loadProject(urlProjectId);
@@ -618,7 +627,6 @@ const App: React.FC = () => {
         <ChatInterface
           messages={messages}
           onSendMessage={handleSendMessage}
-          onClear={handleClear}
           isProcessing={isProcessing}
           projectName={projectName}
           onProjectNameChange={setProjectName}
@@ -640,7 +648,6 @@ const App: React.FC = () => {
           <ChatInterface
             messages={messages}
             onSendMessage={handleSendMessage}
-            onClear={handleClear}
             isProcessing={isProcessing}
             projectName={projectName}
             onProjectNameChange={setProjectName}

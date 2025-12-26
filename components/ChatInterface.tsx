@@ -7,7 +7,6 @@ import { User } from 'firebase/auth';
 interface ChatInterfaceProps {
   messages: ChatMessage[];
   onSendMessage: (text: string) => void;
-  onClear: () => void;
   isProcessing: boolean;
   projectName: string;
   onProjectNameChange: (name: string) => void;
@@ -70,7 +69,6 @@ const InlineFormatter: React.FC<{ text: string }> = ({ text }) => {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
   messages,
   onSendMessage,
-  onClear,
   isProcessing,
   projectName,
   onProjectNameChange,
