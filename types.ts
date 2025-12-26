@@ -14,7 +14,6 @@ export type ComponentType =
   | 'wokwi-photoresistor-sensor'
   | 'wokwi-mpu6050'
   | 'wokwi-neopixel'
-  | 'wokwi-led-ring'
   | 'wokwi-7segment'
   | 'wokwi-buzzer'
   | 'wokwi-servo'

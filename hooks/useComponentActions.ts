@@ -26,14 +26,21 @@ export const useComponentActions = ({
 
   const addComponent = useCallback((type: ComponentType) => {
     const offset = components.length * 20;
+
+    // Default attributes for specific components to prevent rendering errors (like NaNmm)
+    const defaultAttributes: Record<string, any> = {};
+    if (type === 'wokwi-neopixel') {
+      defaultAttributes.pixels = "1";
+    }
+
     const newComp: CircuitComponent = {
-        id: `comp-${uuidv4().slice(0, 8)}`,
-        type,
-        x: 100 + offset, 
-        y: 200 + offset,
-        rotation: 0,
-        attributes: {},
-        label: type.replace('wokwi-', '')
+      id: `comp-${uuidv4().slice(0, 8)}`,
+      type,
+      x: 100 + offset,
+      y: 200 + offset,
+      rotation: 0,
+      attributes: defaultAttributes,
+      label: type.replace('wokwi-', '')
     };
     const newComps = [...components, newComp];
     setComponents(newComps);
@@ -42,7 +49,7 @@ export const useComponentActions = ({
   }, [components, connections, setComponents, saveToHistory, setSelectedComponentId]);
 
   const moveComponent = useCallback((id: string, x: number, y: number) => {
-    setComponents(prev => prev.map(comp => 
+    setComponents(prev => prev.map(comp =>
       comp.id === id ? { ...comp, x, y } : comp
     ));
     setSelectedComponentId(id);
@@ -51,7 +58,7 @@ export const useComponentActions = ({
   const deleteComponent = useCallback(() => {
     if (!selectedComponentId) return;
     const newComps = components.filter(c => c.id !== selectedComponentId);
-    const newConns = connections.filter(c => 
+    const newConns = connections.filter(c =>
       !c[0].startsWith(selectedComponentId) && !c[1].startsWith(selectedComponentId)
     );
     setComponents(newComps);
@@ -63,7 +70,7 @@ export const useComponentActions = ({
 
   const rotateComponent = useCallback(() => {
     if (!selectedComponentId) return;
-    const newComps = components.map(c => 
+    const newComps = components.map(c =>
       c.id === selectedComponentId ? { ...c, rotation: (c.rotation + 90) % 360 } : c
     );
     setComponents(newComps);
@@ -73,9 +80,9 @@ export const useComponentActions = ({
   const flipHorizontal = useCallback(() => {
     if (!selectedComponentId) return;
     const newComps = components.map(c => {
-       if (c.id !== selectedComponentId) return c;
-       const currentFlip = !!c.attributes.flipX;
-       return { ...c, attributes: { ...c.attributes, flipX: !currentFlip } };
+      if (c.id !== selectedComponentId) return c;
+      const currentFlip = !!c.attributes.flipX;
+      return { ...c, attributes: { ...c.attributes, flipX: !currentFlip } };
     });
     setComponents(newComps);
     saveToHistory(newComps, connections);
@@ -84,9 +91,9 @@ export const useComponentActions = ({
   const flipVertical = useCallback(() => {
     if (!selectedComponentId) return;
     const newComps = components.map(c => {
-       if (c.id !== selectedComponentId) return c;
-       const currentFlip = !!c.attributes.flipY;
-       return { ...c, attributes: { ...c.attributes, flipY: !currentFlip } };
+      if (c.id !== selectedComponentId) return c;
+      const currentFlip = !!c.attributes.flipY;
+      return { ...c, attributes: { ...c.attributes, flipY: !currentFlip } };
     });
     setComponents(newComps);
     saveToHistory(newComps, connections);
@@ -99,16 +106,16 @@ export const useComponentActions = ({
   }, [components, connections, setComponents, saveToHistory]);
 
   const createConnection = useCallback((sourceId: string, sourcePin: string, targetId: string, targetPin: string) => {
-     const newConnection: WokwiConnection = [`${sourceId}:${sourcePin}`, `${targetId}:${targetPin}`, "green"];
-     const newConns = connections.some(c => 
-          (c[0] === newConnection[0] && c[1] === newConnection[1]) ||
-          (c[0] === newConnection[1] && c[1] === newConnection[0])
-        ) ? connections : [...connections, newConnection];
-     
-     if (newConns.length > connections.length) {
-        setConnections(newConns);
-        saveToHistory(components, newConns);
-     }
+    const newConnection: WokwiConnection = [`${sourceId}:${sourcePin}`, `${targetId}:${targetPin}`, "green"];
+    const newConns = connections.some(c =>
+      (c[0] === newConnection[0] && c[1] === newConnection[1]) ||
+      (c[0] === newConnection[1] && c[1] === newConnection[0])
+    ) ? connections : [...connections, newConnection];
+
+    if (newConns.length > connections.length) {
+      setConnections(newConns);
+      saveToHistory(components, newConns);
+    }
   }, [components, connections, setConnections, saveToHistory]);
 
   return {

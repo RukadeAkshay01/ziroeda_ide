@@ -145,7 +145,6 @@ export const STATIC_COMPONENT_DATA: Record<string, ComponentSpec> = {
       { name: 'E', x: 5, y: 70 }, { name: 'D', x: 15, y: 70 }, { name: 'COM.2', x: 25, y: 70 }, { name: 'C', x: 35, y: 70 }, { name: 'DP', x: 45, y: 70 }
     ]
   },
-  'wokwi-led-ring': { width: 150, height: 150, pins: [{ name: 'GND', x: 75, y: 150 }, { name: 'VCC', x: 65, y: 150 }, { name: 'DIN', x: 55, y: 150 }, { name: 'DOUT', x: 85, y: 150 }] },
   'wokwi-neopixel': { width: 40, height: 40, pins: [{ name: 'DOUT', x: 5, y: 35 }, { name: 'VDD', x: 15, y: 35 }, { name: 'VSS', x: 25, y: 35 }, { name: 'DIN', x: 35, y: 35 }] },
   'wokwi-buzzer': {
     width: 64.2519685047,

@@ -211,4 +211,102 @@ export const COMPONENT_MAPPINGS: Record<string, ComponentMapping> = {
         }
     },
     'wokwi-pushbutton': { update: () => { }, onEvent: (c, e, s, n, d) => COMPONENT_MAPPINGS['pushbutton'].onEvent!(c, e, s, n, d) },
+
+    // --- NeoPixel ---
+    'wokwi-neopixel': {
+        update: (comp, el, simulator) => {
+            const state = simulator.getNeoPixelState(comp.id);
+            if (state && state.length > 0) {
+                const c = state[0];
+                const r = ((c >> 16) & 0xFF) / 255;
+                const g = ((c >> 8) & 0xFF) / 255;
+                const b = (c & 0xFF) / 255;
+
+                if (el.r !== r) el.r = r;
+                if (el.g !== g) el.g = g;
+                if (el.b !== b) el.b = b;
+
+                // Add "Glow" effect for perceived brightness
+                const intensity = (r + g + b) / 3;
+                if (intensity > 0) {
+                    const glowColor = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, 0.8)`;
+                    el.style.filter = `drop-shadow(0 0 ${4 + intensity * 6}px ${glowColor})`;
+                } else {
+                    el.style.filter = 'none';
+                }
+            } else {
+                if (el.r !== 0) el.r = 0;
+                if (el.g !== 0) el.g = 0;
+                if (el.b !== 0) el.b = 0;
+                el.style.filter = 'none';
+            }
+        }
+    },
+    'neopixel': { update: (c, e, s) => COMPONENT_MAPPINGS['wokwi-neopixel'].update(c, e, s) },
+
+    // --- 7-Segment Display ---
+    'wokwi-7segment': {
+        update: (comp, el, simulator) => {
+            const com1 = simulator.getPinVoltage(comp.id, 'COM.1');
+            const com2 = simulator.getPinVoltage(comp.id, 'COM.2');
+            const comV = (com1 + com2) / 2; // Average or just pick one
+
+            const segments = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'DP'];
+            const segmentValues = segments.map(seg => {
+                const segV = simulator.getPinVoltage(comp.id, seg);
+                const diff = Math.abs(segV - comV);
+                // Threshold of ~2V for visibility, max at 5V
+                return Math.max(0, Math.min(1, (diff - 1.5) / 2.5));
+            });
+
+            // Set individual segment properties if the element supports them
+            // Convention: el.a, el.b, ..., el.dot
+            if (el) {
+                el.a = segmentValues[0] > 0.5;
+                el.b = segmentValues[1] > 0.5;
+                el.c = segmentValues[2] > 0.5;
+                el.d = segmentValues[3] > 0.5;
+                el.e = segmentValues[4] > 0.5;
+                el.f = segmentValues[5] > 0.5;
+                el.g = segmentValues[6] > 0.5;
+                el.dot = segmentValues[7] > 0.5;
+
+                // Also set an aggregate values array if needed
+                el.values = segmentValues;
+            }
+        },
+        reset: (comp, el) => {
+            if (el) {
+                ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dot'].forEach(p => el[p] = false);
+                el.values = [0, 0, 0, 0, 0, 0, 0, 0];
+            }
+        }
+    },
+
+    // --- Servo Motor ---
+    'wokwi-servo': {
+        update: (comp, el, simulator) => {
+            const pw = simulator.getPinPulseWidth(comp.id, 'PWM') || 0;
+
+            // Standard hobby servo: 1ms to 2ms
+            if (pw < 0.0004) return;
+
+            const angle = ((pw - 0.001) / 0.001) * 180;
+            const finalAngle = Math.max(0, Math.min(180, Math.round(angle)));
+
+            if (!isNaN(finalAngle)) {
+                // console.log(`[Servo] ${comp.id} Pulse: ${(pw*1000).toFixed(2)}ms, Angle: ${finalAngle}`);
+                if (el.angle !== finalAngle) el.angle = finalAngle;
+                if (el.getAttribute('angle') !== String(finalAngle)) {
+                    el.setAttribute('angle', String(finalAngle));
+                }
+            }
+        },
+        reset: (comp, el) => {
+            if (el) {
+                el.angle = 0;
+                el.setAttribute('angle', '0');
+            }
+        }
+    },
 };

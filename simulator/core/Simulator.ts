@@ -55,6 +55,10 @@ export class CircuitSimulator {
   private neopixelDecoders: Map<string, WS2812Decoder> = new Map();
   private neopixelState: Map<string, Uint32Array> = new Map();
 
+  public getNeoPixelState(id: string): Uint32Array | undefined {
+    return this.neopixelState.get(id);
+  }
+
   public time: number = 0;
 
 
@@ -240,7 +244,9 @@ export class CircuitSimulator {
     console.log("[Simulator] NetToMcuPin:", Array.from(this.netToMcuPin.entries()));
 
     // 3. Compile
-    const sketch = mcu.code || `void setup() { pinMode(13, OUTPUT); } void loop() { digitalWrite(13, HIGH); delay(1000); digitalWrite(13, LOW); delay(1000); }`;
+    const sketch = (mcu.code && mcu.code.trim().length > 0)
+      ? mcu.code
+      : `void setup() { pinMode(13, OUTPUT); } void loop() { digitalWrite(13, HIGH); delay(1000); digitalWrite(13, LOW); delay(1000); }`;
     const result = await compileSketch(sketch);
     if (result.stderr) {
       console.error("[Simulator] Compilation Error:", result.stderr);
@@ -489,7 +495,7 @@ export class CircuitSimulator {
 
     // NeoPixels / LED Rings
     design.components.forEach(comp => {
-      if (['neopixel', 'led_ring', 'wokwi-neopixel', 'wokwi-led-ring'].includes(comp.type)) {
+      if (['neopixel', 'wokwi-neopixel'].includes(comp.type)) {
         console.log(`[Simulator] checking NeoPixel ${comp.id}...`);
 
         const getMcuPin = (pinName: string): { port: 'B' | 'C' | 'D', bit: number } | null => {

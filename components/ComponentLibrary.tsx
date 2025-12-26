@@ -57,7 +57,6 @@ const CATEGORIES: Category[] = [
     items: [
       { id: 'wokwi-led', name: 'LED', icon: <Radio className="w-4 h-4" /> },
       { id: 'wokwi-neopixel', name: 'NeoPixel', icon: <Radio className="w-4 h-4" /> },
-      { id: 'wokwi-led-ring', name: 'LED Ring', icon: <Disc className="w-4 h-4" /> },
       { id: 'wokwi-7segment', name: '7-Segment', icon: <Monitor className="w-4 h-4" /> },
       { id: 'wokwi-buzzer', name: 'Buzzer', icon: <Volume2 className="w-4 h-4" /> },
       { id: 'wokwi-servo', name: 'Servo Motor', icon: <Gamepad2 className="w-4 h-4" /> },

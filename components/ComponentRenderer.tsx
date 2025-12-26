@@ -8,21 +8,21 @@ interface Props {
 
 const ComponentRenderer = forwardRef<HTMLElement, Props>(({ component }, ref) => {
   const { type, attributes, label } = component;
-  
+
   // Attribute mapping fixes
   const mappedAttributes: Record<string, any> = { ...attributes };
-  
-  // Wokwi LED uses 'lightColor', AI often sends 'color'
-  if (type.includes('led') && mappedAttributes.color) {
-    mappedAttributes.lightColor = mappedAttributes.color;
+
+  // Ensure critical attributes are present for rendering
+  if (type === 'wokwi-neopixel' && !mappedAttributes.pixels) {
+    mappedAttributes.pixels = "1";
   }
-  
+
   const commonProps = {
     ...mappedAttributes,
     title: label || component.id,
     id: component.id,
     // Allow the Wokwi element to define its own dimensions
-    style: { display: 'block' } 
+    style: { display: 'block' }
   };
 
   // Dynamically render the component to bypass JSX.IntrinsicElements strict typing
