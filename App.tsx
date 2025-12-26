@@ -15,9 +15,8 @@ import { ChatMessage, CircuitComponent, WokwiConnection } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageSquare } from 'lucide-react';
 
-import { auth, signInWithGoogle } from './services/firebase';
+import { auth, authenticateWithToken } from './services/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import LoginOverlay from './components/LoginOverlay';
 
 import { useCircuitHistory } from './hooks/useCircuitHistory';
 import { useSimulationRunner } from './hooks/useSimulationRunner';
@@ -291,8 +290,27 @@ const App: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const prompt = params.get('prompt');
     const urlProjectId = params.get('projectId');
+    const token = params.get('token');
 
-    if (prompt && initializationStatus === 'initializing') {
+    const handleAuth = async () => {
+      if (token && initializationStatus === 'initializing') {
+        setInitializationStatus('validating');
+        try {
+          await authenticateWithToken(token);
+          // Post-auth redirect to clean URL
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('token');
+          window.history.replaceState({}, '', newUrl.toString());
+        } catch (error) {
+          console.error("Token authentication failed", error);
+          setInitializationStatus('unauthorized');
+        }
+      }
+    };
+
+    handleAuth();
+
+    if (prompt && (initializationStatus === 'initializing' || initializationStatus === 'validating')) {
       // Send the message
       handleSendMessage(prompt);
 
@@ -304,7 +322,7 @@ const App: React.FC = () => {
       window.history.replaceState({}, '', newUrl);
     }
 
-    if (!urlProjectId && !prompt && initializationStatus === 'initializing') {
+    if (!urlProjectId && !prompt && !token && initializationStatus === 'initializing') {
       window.location.href = 'https://ziroeda.com';
       return;
     }
@@ -517,9 +535,8 @@ const App: React.FC = () => {
   const selectedComponent = components.find(c => c.id === selectedComponentId);
 
   return (
-    <ProjectGuard status={initializationStatus} onLogin={signInWithGoogle}>
+    <ProjectGuard status={initializationStatus}>
       <div className="flex h-[100dvh] w-screen overflow-hidden bg-dark-900 text-white font-sans relative">
-        {!user && <LoginOverlay />}
 
         {/* --- MOBILE: Library Drawer (90% from Left) --- */}
         <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isLibraryOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>

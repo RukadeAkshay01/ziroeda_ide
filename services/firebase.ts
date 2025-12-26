@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInWithCustomToken } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -18,12 +18,12 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
-export const signInWithGoogle = async () => {
+export const authenticateWithToken = async (token: string) => {
     try {
-        const result = await signInWithPopup(auth, googleProvider);
+        const result = await signInWithCustomToken(auth, token);
         return result.user;
     } catch (error) {
-        console.error("Error signing in with Google", error);
+        console.error("Error signing in with custom token", error);
         throw error;
     }
 };
