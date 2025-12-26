@@ -389,6 +389,13 @@ const App: React.FC = () => {
 
             // Success!
             setInitializationStatus('ready');
+
+            // Auto-center the loaded circuit
+            setTimeout(() => {
+              if (canvasRef.current) {
+                canvasRef.current.zoomToFit();
+              }
+            }, 500);
           } else {
             setInitializationStatus('not-found');
           }
@@ -434,7 +441,7 @@ const App: React.FC = () => {
           if (canvasRef.current) {
             canvasRef.current.zoomToFit();
           }
-        }, 100);
+        }, 500);
       }
 
       const aiMsg: ChatMessage = {
