@@ -145,6 +145,19 @@ const App: React.FC = () => {
 
   // Hooks
   const { historyIndex, historyLength, saveToHistory, undo, redo, resetHistory } = useCircuitHistory();
+
+  // Sync Project ID to URL to enable reloads/persistence
+  useEffect(() => {
+    if (projectId) {
+      const currentUrl = new URL(window.location.href);
+      if (currentUrl.searchParams.get('projectId') !== projectId) {
+        currentUrl.searchParams.set('projectId', projectId);
+        // Clear prompt if it was there
+        currentUrl.searchParams.delete('prompt');
+        window.history.replaceState({}, '', currentUrl.toString());
+      }
+    }
+  }, [projectId]);
   const {
     isSimulating,
     isPaused,
@@ -279,11 +292,14 @@ const App: React.FC = () => {
     const prompt = params.get('prompt');
     const urlProjectId = params.get('projectId');
 
-    if (prompt) {
+    if (prompt && initializationStatus === 'initializing') {
       // Send the message
       handleSendMessage(prompt);
 
-      // Clean up the URL (remove prompt but keep projectId if needed, though usually we load project first)
+      // Set status to ready so user can see Ziro thinking
+      setInitializationStatus('ready');
+
+      // Clean up the URL (remove prompt but keep projectId if needed)
       const newUrl = window.location.pathname + (urlProjectId ? `?projectId=${urlProjectId}` : '');
       window.history.replaceState({}, '', newUrl);
     }
