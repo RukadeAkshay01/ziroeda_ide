@@ -49,12 +49,13 @@ const App: React.FC = () => {
 
   // Exit Confirmation State
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const isIntentionalExitRef = useRef(false);
 
-  // Browser Exit Protection
   // Browser Exit Protection (Tab Close & Back Button)
   useEffect(() => {
     // 1. Handle Tab Close / Refresh
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isIntentionalExitRef.current) return;
       e.preventDefault();
       e.returnValue = '';
       return '';
@@ -62,14 +63,14 @@ const App: React.FC = () => {
 
     // 2. Handle Back Button (Push State Trap)
     const handlePopState = (e: PopStateEvent) => {
+      if (isIntentionalExitRef.current) return;
+
       // User pressed Back
       e.preventDefault();
       // Show confirmation
       setShowExitConfirm((prev) => {
         if (!prev) {
-          // If modal wasn't open, push state again to "undo" the back navigation effectively checks the trap
-          // But actually, we just want to trap them.
-          // Pushing state again puts us back "forward".
+          // Push state again to "undo" the back navigation effectively checks the trap
           window.history.pushState(null, '', window.location.href);
           return true;
         }
@@ -94,6 +95,7 @@ const App: React.FC = () => {
   };
 
   const handleConfirmExit = () => {
+    isIntentionalExitRef.current = true;
     window.location.href = 'https://ziroeda.com';
   };
 
