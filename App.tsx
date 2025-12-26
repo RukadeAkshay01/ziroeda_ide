@@ -29,6 +29,7 @@ import VersionHistoryPanel from './components/VersionHistoryPanel';
 import { ConfirmationModal } from './components/modals/ConfirmationModal';
 
 import { useAutosave } from './hooks/useAutosave';
+import ProjectGuard, { InitializationStatus } from './components/ProjectGuard';
 
 
 
@@ -42,6 +43,7 @@ const App: React.FC = () => {
   const [projectName, setProjectName] = useState<string>("Untitled Project");
   const [isPublic, setIsPublic] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [initializationStatus, setInitializationStatus] = useState<InitializationStatus>('initializing');
 
   // Canvas Ref (Moved up for useAutosave)
   const canvasRef = useRef<CanvasHandle>(null);
@@ -112,6 +114,8 @@ const App: React.FC = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  const lastLoadedProjectId = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: 'intro',
@@ -284,16 +288,12 @@ const App: React.FC = () => {
       window.history.replaceState({}, '', newUrl);
     }
 
-    if (!urlProjectId) {
-      const lastProject = localStorage.getItem('ziro_last_project_id');
-      if (lastProject) {
-        window.location.search = `?projectId=${lastProject}`;
-        return;
-      }
+    if (!urlProjectId && !prompt) {
+      window.location.href = 'https://ziroeda.com';
+      return;
     }
 
     if (urlProjectId) {
-      localStorage.setItem('ziro_last_project_id', urlProjectId);
       const fetchProject = async () => {
         try {
           const project = await loadProject(urlProjectId);
@@ -304,6 +304,7 @@ const App: React.FC = () => {
             setProjectId(urlProjectId);
             setProjectName(project.name || "Untitled Project");
             setIsPublic(project.is_public || false);
+            lastLoadedProjectId.current = urlProjectId;
 
             // Restore chat history if available
             if (project.chat_history && project.chat_history.length > 0) {
@@ -321,23 +322,23 @@ const App: React.FC = () => {
 
             // Add to history
             saveToHistory(project.design.components || [], project.design.connections || []);
+
+            // Success!
+            setInitializationStatus('ready');
+          } else {
+            setInitializationStatus('not-found');
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to load project:", error);
-          alert("Failed to load project. It might not exist or you don't have permission.");
+          if (error?.status === 401 || error?.status === 403) {
+            setInitializationStatus('unauthorized');
+          } else {
+            setInitializationStatus('not-found');
+          }
         }
       };
-      if (user) {
-        fetchProject();
-      } else {
-        // Wait for auth to initialize
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-          if (currentUser) {
-            fetchProject();
-          }
-          unsubscribe();
-        });
-      }
+
+      fetchProject();
     }
   }, [user]); // Re-run when user auth state changes
 
@@ -499,152 +500,128 @@ const App: React.FC = () => {
 
   const selectedComponent = components.find(c => c.id === selectedComponentId);
 
-  if (authLoading) {
-    return <div className="flex h-[100dvh] w-screen items-center justify-center bg-dark-900 text-white">Loading...</div>;
-  }
-
   return (
-    <div className="flex h-[100dvh] w-screen overflow-hidden bg-dark-900 text-white font-sans relative">
-      {!user && <LoginOverlay />}
+    <ProjectGuard status={initializationStatus}>
+      <div className="flex h-[100dvh] w-screen overflow-hidden bg-dark-900 text-white font-sans relative">
+        {!user && <LoginOverlay />}
 
-      {/* --- MOBILE: Library Drawer (90% from Left) --- */}
-      <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isLibraryOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={() => setIsLibraryOpen(false)}
-        />
-        {/* Drawer Panel */}
-        <div className={`absolute left-0 top-0 bottom-0 w-[90%] bg-dark-900 shadow-2xl transition-transform duration-300 ease-in-out ${isLibraryOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <ComponentLibrary onAddComponent={handleAddComponent} />
-          {/* Close handle for accessibility */}
-          <div className="absolute top-1/2 -right-6 w-6 h-12 bg-dark-900 rounded-r-lg flex items-center justify-center text-gray-500" onClick={() => setIsLibraryOpen(false)}>
-            ‹
+        {/* --- MOBILE: Library Drawer (90% from Left) --- */}
+        <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isLibraryOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsLibraryOpen(false)}
+          />
+          {/* Drawer Panel */}
+          <div className={`absolute left-0 top-0 bottom-0 w-[90%] bg-dark-900 shadow-2xl transition-transform duration-300 ease-in-out ${isLibraryOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <ComponentLibrary onAddComponent={handleAddComponent} />
+            {/* Close handle for accessibility */}
+            <div className="absolute top-1/2 -right-6 w-6 h-12 bg-dark-900 rounded-r-lg flex items-center justify-center text-gray-500" onClick={() => setIsLibraryOpen(false)}>
+              ‹
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* --- DESKTOP: Library Sidebar --- */}
-      <div
-        className={`hidden md:block flex-shrink-0 h-full border-r border-dark-700 bg-dark-900 transition-[width,opacity] duration-300 ease-in-out overflow-hidden ${isLibraryOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 border-none'
-          }`}
-      >
-        <ComponentLibrary onAddComponent={addComponent} />
-      </div>
-
-      {/* --- CENTER: Main Application Area --- */}
-      <div className="flex-1 flex flex-col min-w-0 bg-dark-800 relative z-10">
-        <UpperToolbar
-          onViewCode={() => setIsCodeEditorOpen(prev => !prev)}
-          onSimulate={toggleSimulation}
-          onResetSimulation={handleStopSimulation}
-          onViewSerialMonitor={() => setIsSerialMonitorOpen(prev => !prev)}
-          onViewSchematic={() => alert("Schematic View: Feature Coming Soon")}
-          onViewBOM={() => setIsBOMOpen(prev => !prev)}
-          onHistoryClick={handleToggleHistory}
-          isSimulating={isSimulating}
-          isPaused={isPaused}
-          isCompiling={isCompiling}
-          toggleLibrary={() => setIsLibraryOpen(!isLibraryOpen)}
-          isLibraryOpen={isLibraryOpen}
-          isReadOnly={isReadOnly}
-          onLogoClick={handleLogoClick}
-        />
-
-        <div className="flex-1 relative bg-grid overflow-hidden">
-          <Canvas
-            ref={canvasRef}
-            key={canvasResetKey}
-            components={components}
-            connections={connections}
-            isLoading={isProcessing}
-            loadingMessage={loadingMessage}
-            selectedComponentId={selectedComponentId}
-            onSelectComponent={(id) => { setSelectedComponentId(id); if (!id) setIsPropertiesOpen(false); }}
-            onComponentMove={moveComponent}
-            onDragEnd={() => saveToHistory(components, connections)}
-            onConnectionCreated={createConnection}
-            simulationPinStates={isSimulating ? simulationPinStates : undefined}
-            onComponentEvent={handleComponentEvent}
-            simulator={getSimulator()}
-            isSimulating={isSimulating}
-            isReadOnly={isReadOnly}
-          />
-
-          {isPropertiesOpen && selectedComponent && (
-            <PropertiesPanel
-              component={selectedComponent}
-              onUpdate={updateComponent}
-              onClose={() => setIsPropertiesOpen(false)}
-            />
-          )}
+        {/* --- DESKTOP: Library Sidebar --- */}
+        <div
+          className={`hidden md:block flex-shrink-0 h-full border-r border-dark-700 bg-dark-900 transition-[width,opacity] duration-300 ease-in-out overflow-hidden ${isLibraryOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 border-none'
+            }`}
+        >
+          <ComponentLibrary onAddComponent={addComponent} />
         </div>
 
-        <LowerToolbar
-          selectedComponentId={selectedComponentId}
-          onDelete={deleteComponent}
-          onRotate={rotateComponent}
-          onFlipHorizontal={flipHorizontal}
-          onFlipVertical={flipVertical}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          onProperties={() => setIsPropertiesOpen(!isPropertiesOpen)}
-          onFitToScreen={() => canvasRef.current?.zoomToFit()}
-          canUndo={historyIndex > 0}
-          canRedo={historyIndex < historyLength - 1}
-        />
-      </div>
+        {/* --- CENTER: Main Application Area --- */}
+        <div className="flex-1 flex flex-col min-w-0 bg-dark-800 relative z-10">
+          <UpperToolbar
+            onViewCode={() => setIsCodeEditorOpen(prev => !prev)}
+            onSimulate={toggleSimulation}
+            onResetSimulation={handleStopSimulation}
+            onViewSerialMonitor={() => setIsSerialMonitorOpen(prev => !prev)}
+            onViewSchematic={() => alert("Schematic View: Feature Coming Soon")}
+            onViewBOM={() => setIsBOMOpen(prev => !prev)}
+            onHistoryClick={handleToggleHistory}
+            isSimulating={isSimulating}
+            isPaused={isPaused}
+            isCompiling={isCompiling}
+            toggleLibrary={() => setIsLibraryOpen(!isLibraryOpen)}
+            isLibraryOpen={isLibraryOpen}
+            isReadOnly={isReadOnly}
+            onLogoClick={handleLogoClick}
+          />
 
-      {isHistoryOpen && (
-        <VersionHistoryPanel
-          versions={projectVersions}
-          onCreateVersion={handleCreateVersion}
-          onLoadVersion={handleLoadVersion}
-          isLoading={isHistoryLoading}
-          onClose={() => setIsHistoryOpen(false)}
-          isReadOnly={isReadOnly}
-        />
-      )}
+          <div className="flex-1 relative bg-grid overflow-hidden">
+            <Canvas
+              ref={canvasRef}
+              key={canvasResetKey}
+              components={components}
+              connections={connections}
+              isLoading={isProcessing}
+              loadingMessage={loadingMessage}
+              selectedComponentId={selectedComponentId}
+              onSelectComponent={(id) => { setSelectedComponentId(id); if (!id) setIsPropertiesOpen(false); }}
+              onComponentMove={moveComponent}
+              onDragEnd={() => saveToHistory(components, connections)}
+              onConnectionCreated={createConnection}
+              simulationPinStates={isSimulating ? simulationPinStates : undefined}
+              onComponentEvent={handleComponentEvent}
+              simulator={getSimulator()}
+              isSimulating={isSimulating}
+              isReadOnly={isReadOnly}
+            />
 
-      {/* Exit Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={showExitConfirm}
-        onClose={() => setShowExitConfirm(false)}
-        onConfirm={async () => {
-          // Trigger final preview capture on exit
-          await capturePreview();
-          handleConfirmExit();
-        }}
-        title="Leave the IDE?"
-        message="Are you sure you want to leave? Any unsaved changes might be lost (though we usually autosave!)."
-        confirmText="Yes, Leave"
-        cancelText="Stay"
-        type="warning"
-      />
+            {isPropertiesOpen && selectedComponent && (
+              <PropertiesPanel
+                component={selectedComponent}
+                onUpdate={updateComponent}
+                onClose={() => setIsPropertiesOpen(false)}
+              />
+            )}
+          </div>
 
-      {/* --- DESKTOP: Chat Sidebar --- */}
-      <div className="hidden md:block w-96 flex-shrink-0 z-30 h-full border-l border-dark-700 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
-        <ChatInterface
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          isProcessing={isProcessing}
-          projectName={projectName}
-          onProjectNameChange={setProjectName}
-          user={user}
-          saveStatus={saveStatus}
-          lastSavedAt={lastSavedAt}
-        />
-      </div>
+          <LowerToolbar
+            selectedComponentId={selectedComponentId}
+            onDelete={deleteComponent}
+            onRotate={rotateComponent}
+            onFlipHorizontal={flipHorizontal}
+            onFlipVertical={flipVertical}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onProperties={() => setIsPropertiesOpen(!isPropertiesOpen)}
+            onFitToScreen={() => canvasRef.current?.zoomToFit()}
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < historyLength - 1}
+          />
+        </div>
 
-      {/* --- MOBILE: Chat Drawer (90% from Right) --- */}
-      <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isMobileChatOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>
-        {/* Backdrop (10% Click Area) */}
-        <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={() => setIsMobileChatOpen(false)}
+        {isHistoryOpen && (
+          <VersionHistoryPanel
+            versions={projectVersions}
+            onCreateVersion={handleCreateVersion}
+            onLoadVersion={handleLoadVersion}
+            isLoading={isHistoryLoading}
+            onClose={() => setIsHistoryOpen(false)}
+            isReadOnly={isReadOnly}
+          />
+        )}
+
+        {/* Exit Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={showExitConfirm}
+          onClose={() => setShowExitConfirm(false)}
+          onConfirm={async () => {
+            // Trigger final preview capture on exit
+            await capturePreview();
+            handleConfirmExit();
+          }}
+          title="Leave the IDE?"
+          message="Are you sure you want to leave? Any unsaved changes might be lost (though we usually autosave!)."
+          confirmText="Yes, Leave"
+          cancelText="Stay"
+          type="warning"
         />
-        {/* Drawer Panel */}
-        <div className={`absolute right-0 top-0 bottom-0 w-[90%] bg-dark-900 border-l border-dark-700 shadow-2xl transition-transform duration-300 ease-in-out ${isMobileChatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+
+        {/* --- DESKTOP: Chat Sidebar --- */}
+        <div className="hidden md:block w-96 flex-shrink-0 z-30 h-full border-l border-dark-700 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
           <ChatInterface
             messages={messages}
             onSendMessage={handleSendMessage}
@@ -656,57 +633,79 @@ const App: React.FC = () => {
             lastSavedAt={lastSavedAt}
           />
         </div>
-      </div>
 
-      {/* --- MOBILE: Draggable Chat FAB --- */}
-      <button
-        className={`md:hidden fixed z-40 w-14 h-14 bg-dark-900/80 backdrop-blur-md rounded-full shadow-[0_0_20px_rgba(20,184,166,0.3)] border border-white/10 flex items-center justify-center text-white active:scale-95 transition-transform ${isMobileChatOpen ? 'hidden' : 'block'}`}
-        style={{
-          left: fabPos ? fabPos.x : undefined,
-          top: fabPos ? fabPos.y : undefined,
-          right: fabPos ? undefined : '20px',
-          bottom: fabPos ? undefined : '100px', // Position above the lower toolbar
-          touchAction: 'none' // Prevent scrolling while dragging
-        }}
-        onTouchStart={handleFabTouchStart}
-        onTouchMove={handleFabTouchMove}
-        onClick={() => { if (!isDraggingRef.current) setIsMobileChatOpen(true); }}
-      >
-        <ZiroedaLogo className="w-8 h-8" />
-        {/* Notification dot if processing */}
-        {isProcessing && (
-          <span className="absolute top-0 right-0 w-3 h-3 bg-brand-500 rounded-full animate-bounce" />
+        {/* --- MOBILE: Chat Drawer (90% from Right) --- */}
+        <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isMobileChatOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>
+          {/* Backdrop (10% Click Area) */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsMobileChatOpen(false)}
+          />
+          {/* Drawer Panel */}
+          <div className={`absolute right-0 top-0 bottom-0 w-[90%] bg-dark-900 border-l border-dark-700 shadow-2xl transition-transform duration-300 ease-in-out ${isMobileChatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <ChatInterface
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              isProcessing={isProcessing}
+              projectName={projectName}
+              onProjectNameChange={setProjectName}
+              user={user}
+              saveStatus={saveStatus}
+              lastSavedAt={lastSavedAt}
+            />
+          </div>
+        </div>
+
+        {/* --- MOBILE: Draggable Chat FAB --- */}
+        <button
+          className={`md:hidden fixed z-40 w-14 h-14 bg-dark-900/80 backdrop-blur-md rounded-full shadow-[0_0_20px_rgba(20,184,166,0.3)] border border-white/10 flex items-center justify-center text-white active:scale-95 transition-transform ${isMobileChatOpen ? 'hidden' : 'block'}`}
+          style={{
+            left: fabPos ? fabPos.x : undefined,
+            top: fabPos ? fabPos.y : undefined,
+            right: fabPos ? undefined : '20px',
+            bottom: fabPos ? undefined : '100px', // Position above the lower toolbar
+            touchAction: 'none' // Prevent scrolling while dragging
+          }}
+          onTouchStart={handleFabTouchStart}
+          onTouchMove={handleFabTouchMove}
+          onClick={() => { if (!isDraggingRef.current) setIsMobileChatOpen(true); }}
+        >
+          <ZiroedaLogo className="w-8 h-8" />
+          {/* Notification dot if processing */}
+          {isProcessing && (
+            <span className="absolute top-0 right-0 w-3 h-3 bg-brand-500 rounded-full animate-bounce" />
+          )}
+        </button>
+
+        {/* --- GLOBAL OVERLAYS --- */}
+
+        {isCodeEditorOpen && (
+          <CodeEditor
+            code={arduinoCode}
+            components={components}
+            onCodeChange={(newCode) => setArduinoCode(newCode)}
+            onClose={() => setIsCodeEditorOpen(false)}
+          />
         )}
-      </button>
 
-      {/* --- GLOBAL OVERLAYS --- */}
+        {isBOMOpen && (
+          <BillOfMaterials
+            components={components}
+            onClose={() => setIsBOMOpen(false)}
+          />
+        )}
 
-      {isCodeEditorOpen && (
-        <CodeEditor
-          code={arduinoCode}
-          components={components}
-          onCodeChange={(newCode) => setArduinoCode(newCode)}
-          onClose={() => setIsCodeEditorOpen(false)}
+        <SerialMonitor
+          isOpen={isSerialMonitorOpen}
+          onClose={() => setIsSerialMonitorOpen(false)}
+          output={serialOutput}
+          onSend={sendSerialInput}
+          onClear={clearSerialOutput}
+          isSimulating={isSimulating}
         />
-      )}
 
-      {isBOMOpen && (
-        <BillOfMaterials
-          components={components}
-          onClose={() => setIsBOMOpen(false)}
-        />
-      )}
-
-      <SerialMonitor
-        isOpen={isSerialMonitorOpen}
-        onClose={() => setIsSerialMonitorOpen(false)}
-        output={serialOutput}
-        onSend={sendSerialInput}
-        onClear={clearSerialOutput}
-        isSimulating={isSimulating}
-      />
-
-    </div>
+      </div>
+    </ProjectGuard>
   );
 };
 
