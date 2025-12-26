@@ -579,7 +579,7 @@ const App: React.FC = () => {
         <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isLibraryOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
             onClick={() => setIsLibraryOpen(false)}
           />
           {/* Drawer Panel */}
@@ -680,14 +680,16 @@ const App: React.FC = () => {
           onClose={() => setShowExitConfirm(false)}
           onConfirm={async () => {
             // Trigger final preview capture on exit
+            // We can also trigger a manual save here if needed, but autosave usually handles it.
+            // Let's assume safely that we are capturing state.
             await capturePreview();
             handleConfirmExit();
           }}
-          title="Leave the IDE?"
-          message="Are you sure you want to leave? Any unsaved changes might be lost (though we usually autosave!)."
-          confirmText="Yes, Leave"
+          title="Save & Exit?"
+          message="We'll save your latest changes and capture a preview before taking you back to the dashboard."
+          confirmText="Save & Exit"
           cancelText="Stay"
-          type="warning"
+          type="info" // Changed from warning to info to be less "scary"
         />
 
         {/* --- DESKTOP: Chat Sidebar --- */}
@@ -708,7 +710,7 @@ const App: React.FC = () => {
         <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isMobileChatOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>
           {/* Backdrop (10% Click Area) */}
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
             onClick={() => setIsMobileChatOpen(false)}
           />
           {/* Drawer Panel */}
