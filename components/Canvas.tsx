@@ -17,6 +17,7 @@ interface CanvasProps {
   components: CircuitComponent[];
   connections: WokwiConnection[];
   isLoading: boolean;
+  loadingMessage?: string;
   selectedComponentId: string | null;
   onSelectComponent: (id: string | null) => void;
   onComponentMove: (id: string, x: number, y: number) => void;
@@ -44,6 +45,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
   components,
   connections,
   isLoading,
+  loadingMessage,
   selectedComponentId,
   onSelectComponent,
   onComponentMove,
@@ -162,7 +164,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-none">
           <div className="flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-400"></div>
-            <p className="text-brand-400 font-mono animate-pulse">Routing Circuits...</p>
+            <p className="text-brand-400 font-mono animate-pulse">{loadingMessage || "Routing Circuits..."}</p>
           </div>
         </div>
       )}

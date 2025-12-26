@@ -174,6 +174,7 @@ const App: React.FC = () => {
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>("");
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
 
   const [isBOMOpen, setIsBOMOpen] = useState(false);
@@ -335,6 +336,7 @@ const App: React.FC = () => {
     const userMsg: ChatMessage = { id: uuidv4(), role: 'user', text };
     const updatedHistory = [...messages, userMsg];
     setMessages(updatedHistory);
+    setLoadingMessage("Ziro is designing your circuit...");
     setIsProcessing(true);
 
     try {
@@ -547,6 +549,7 @@ const App: React.FC = () => {
             components={components}
             connections={connections}
             isLoading={isProcessing}
+            loadingMessage={loadingMessage}
             selectedComponentId={selectedComponentId}
             onSelectComponent={(id) => { setSelectedComponentId(id); if (!id) setIsPropertiesOpen(false); }}
             onComponentMove={moveComponent}

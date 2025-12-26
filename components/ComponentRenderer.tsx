@@ -33,7 +33,7 @@ const ComponentRenderer = forwardRef<HTMLElement, Props>(({ component }, ref) =>
 
   return (
     <div ref={ref as any} className="w-24 h-24 bg-red-500 flex items-center justify-center text-xs text-white border border-red-400 p-2 text-center break-words">
-      {type}
+      {type.replace(/^wokwi-/, '')}
     </div>
   );
 });

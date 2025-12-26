@@ -30,7 +30,7 @@ const PinOverlay: React.FC<PinOverlayProps> = ({
                ${isDrawingSource ? 'bg-green-500 scale-125 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'opacity-0 hover:opacity-100 bg-cyan-400/50 hover:bg-cyan-400 hover:scale-125 hover:shadow-[0_0_8px_cyan]'}
              `}
             style={{ left: pin.x, top: pin.y }}
-            title={`${comp.label || comp.type}: ${pin.name}`}
+            title={`${comp.label || comp.type.replace(/^wokwi-/, '')}: ${pin.name}`}
             onMouseDown={(e) => onPinClick(e, comp.id, pin.name, pin.x, pin.y)}
           />
         );
