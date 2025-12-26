@@ -51,14 +51,42 @@ const App: React.FC = () => {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Browser Exit Protection
+  // Browser Exit Protection (Tab Close & Back Button)
   useEffect(() => {
+    // 1. Handle Tab Close / Refresh
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = '';
       return '';
     };
+
+    // 2. Handle Back Button (Push State Trap)
+    const handlePopState = (e: PopStateEvent) => {
+      // User pressed Back
+      e.preventDefault();
+      // Show confirmation
+      setShowExitConfirm((prev) => {
+        if (!prev) {
+          // If modal wasn't open, push state again to "undo" the back navigation effectively checks the trap
+          // But actually, we just want to trap them.
+          // Pushing state again puts us back "forward".
+          window.history.pushState(null, '', window.location.href);
+          return true;
+        }
+        return prev;
+      });
+    };
+
+    // Initialize Trap
+    window.history.pushState(null, '', window.location.href);
+
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   const handleLogoClick = () => {
