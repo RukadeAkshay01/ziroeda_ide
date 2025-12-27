@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CircuitComponent, Point } from '../types';
 import { LayoutDataMap, getPinExitVector, updateRouteWithDrag } from '../utils/circuitUtils';
 import { DragMode, DrawingState, WireDragState } from '../types/canvasTypes';
@@ -12,6 +12,8 @@ interface UseCanvasInteractionsProps {
   wireRoutes: Map<string, Point[]>;
   setWireRoutes: React.Dispatch<React.SetStateAction<Map<string, Point[]>>>;
   onSelectComponent: (id: string | null) => void;
+  selectedWireIndex: string | null;
+  onSelectWire: (index: string | null) => void;
   onComponentMove: (id: string, x: number, y: number) => void;
   onDragEnd?: () => void;
   onConnectionCreated?: (sourceId: string, sourcePin: string, targetId: string, targetPin: string) => void;
@@ -29,6 +31,8 @@ export const useCanvasInteractions = ({
   wireRoutes,
   setWireRoutes,
   onSelectComponent,
+  selectedWireIndex,
+  onSelectWire: setSelectedWireIndex, // Alias for compatibility with existing code
   onComponentMove,
   onDragEnd,
   onConnectionCreated,
@@ -51,10 +55,29 @@ export const useCanvasInteractions = ({
   // State
   const [dragMode, setDragMode] = useState<DragMode>('IDLE');
   const [draggedComponentId, setDraggedComponentId] = useState<string | null>(null);
-  const [selectedWireIndex, setSelectedWireIndex] = useState<string | null>(null);
+  // local selectedWireIndex state removed - now controlled via props
   const [wireDragState, setWireDragState] = useState<WireDragState | null>(null);
   const [drawingState, setDrawingState] = useState<DrawingState | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // Escape Key Handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (drawingState) {
+          setDrawingState(null); // Cancel drawing
+        } else {
+          // Deselect everything
+          onSelectComponent(null);
+          setSelectedWireIndex(null);
+          setDraggedComponentId(null); // Also cancel drag if happening (though mouseUp usually handles this)
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [drawingState, onSelectComponent, setSelectedWireIndex]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isReadOnly) return; // Disable interactions in read-only mode (except maybe pan/zoom which is handled by transform hook)
@@ -80,6 +103,7 @@ export const useCanvasInteractions = ({
     e.stopPropagation();
     if (drawingState) return;
     onSelectComponent(id);
+    setSelectedWireIndex(null); // Clear wire selection
     setDragMode('COMPONENT');
     setDraggedComponentId(id);
     hasMovedRef.current = false;
@@ -101,6 +125,13 @@ export const useCanvasInteractions = ({
     onSelectComponent(null);
   };
 
+  const handleWireTouchStart = (e: React.TouchEvent, index: string) => {
+    e.stopPropagation();
+    if (drawingState) return;
+    setSelectedWireIndex(index);
+    onSelectComponent(null);
+  };
+
   const handleWireHandleMouseDown = (e: React.MouseEvent, wireIndex: string, segmentIndex: number) => {
     e.stopPropagation();
     const points = wireRoutes.get(wireIndex);
@@ -114,6 +145,7 @@ export const useCanvasInteractions = ({
       setWireRoutes(prev => new Map(prev).set(wireIndex, newPoints));
       setDragMode('WIRE');
       setWireDragState({ wireIndex, segmentIndex: 1, orientation });
+      wireStartPoints.current = newPoints;
     } else {
       if (segmentIndex === 0 || segmentIndex === points.length - 2) return;
       const p1 = points[segmentIndex];
@@ -121,12 +153,12 @@ export const useCanvasInteractions = ({
       const orientation = Math.abs(p1.x - p2.x) > Math.abs(p1.y - p2.y) ? 'H' : 'V';
       setDragMode('WIRE');
       setWireDragState({ wireIndex, segmentIndex, orientation });
+      wireStartPoints.current = points;
     }
     lastMousePos.current = { x: e.clientX, y: e.clientY };
 
     const canvasCoords = getCanvasCoords(e.clientX, e.clientY);
     dragStartCanvasPos.current = canvasCoords;
-    wireStartPoints.current = points;
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -176,6 +208,10 @@ export const useCanvasInteractions = ({
   const handlePinClick = (e: React.MouseEvent | React.TouchEvent, compId: string, pinName: string, x: number, y: number) => {
     e.stopPropagation();
     // e.preventDefault(); // Removed to allow scrolling if needed, handled in touch handlers
+
+    // Disable wiring during simulation
+    if (isSimulating) return;
+
     if (drawingState) {
       if (drawingState.componentId !== compId) {
         onConnectionCreated?.(drawingState.componentId, drawingState.pinName, compId, pinName);
@@ -272,6 +308,13 @@ export const useCanvasInteractions = ({
           componentStartPos.current.x + totalDeltaX,
           componentStartPos.current.y + totalDeltaY
         );
+      } else if (dragMode === 'WIRE' && wireDragState) {
+        const { wireIndex, segmentIndex, orientation } = wireDragState;
+        const currentPoints = wireStartPoints.current;
+        if (currentPoints.length > 0) {
+          const newPoints = updateRouteWithDrag(currentPoints, segmentIndex, canvasCoords, orientation);
+          setWireRoutes(prev => new Map(prev).set(wireIndex, newPoints));
+        }
       }
     }
   };
@@ -319,10 +362,44 @@ export const useCanvasInteractions = ({
     }
   };
 
+  // Wire Handle Touch Handler
+  const handleWireHandleTouchStart = (e: React.TouchEvent, wireIndex: string, segmentIndex: number) => {
+    e.stopPropagation();
+    if (e.touches.length !== 1) return;
+
+    componentHandledTouch.current = true;
+
+    const touch = e.touches[0];
+    const points = wireRoutes.get(wireIndex);
+    if (!points) return;
+
+    if (points.length === 2) {
+      const p0 = points[0];
+      const p1 = points[1];
+      const orientation = Math.abs(p0.x - p1.x) > Math.abs(p0.y - p1.y) ? 'H' : 'V';
+      const newPoints = [p0, { ...p0 }, { ...p1 }, p1];
+      setWireRoutes(prev => new Map(prev).set(wireIndex, newPoints));
+      setDragMode('WIRE');
+      setWireDragState({ wireIndex, segmentIndex: 1, orientation });
+      wireStartPoints.current = newPoints;
+    } else {
+      if (segmentIndex === 0 || segmentIndex === points.length - 2) return;
+      const p1 = points[segmentIndex];
+      const p2 = points[segmentIndex + 1];
+      const orientation = Math.abs(p1.x - p2.x) > Math.abs(p1.y - p2.y) ? 'H' : 'V';
+      setDragMode('WIRE');
+      setWireDragState({ wireIndex, segmentIndex, orientation });
+      wireStartPoints.current = points;
+    }
+
+    lastMousePos.current = { x: touch.clientX, y: touch.clientY };
+    const canvasCoords = getCanvasCoords(touch.clientX, touch.clientY);
+    dragStartCanvasPos.current = canvasCoords;
+  };
+
   return {
     dragMode,
     draggedComponentId,
-    selectedWireIndex,
     wireDragState,
     drawingState,
     mousePos,
@@ -330,6 +407,7 @@ export const useCanvasInteractions = ({
       handleMouseDown,
       handleComponentMouseDown,
       handleWireClick,
+      handleWireTouchStart,
       handleWireHandleMouseDown,
       handleMouseMove,
       handleMouseUp,
@@ -338,7 +416,8 @@ export const useCanvasInteractions = ({
       handleTouchStart,
       handleTouchMove,
       handleTouchEnd,
-      handleComponentTouchStart
+      handleComponentTouchStart,
+      handleWireHandleTouchStart
     }
   };
 };

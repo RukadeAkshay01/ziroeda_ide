@@ -29,6 +29,7 @@ import { ConfirmationModal } from './components/modals/ConfirmationModal';
 
 import { useAutosave } from './hooks/useAutosave';
 import ProjectGuard, { InitializationStatus } from './components/ProjectGuard';
+import { MAINTENANCE_MODE } from './maintenanceConfig';
 
 
 
@@ -218,10 +219,22 @@ const App: React.FC = () => {
 
   // Selection & UI State
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
-  const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
+  const [selectedWireIndex, setSelectedWireIndex] = useState<string | null>(null);
+
+  const handleSelectComponent = (id: string | null) => {
+    setSelectedComponentId(id);
+    if (id) setSelectedWireIndex(null);
+  };
+
+  const handleSelectWire = (index: string | null) => {
+    setSelectedWireIndex(index);
+    if (index) setSelectedComponentId(null);
+  };
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string>("");
   const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
+  const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
 
   const [isBOMOpen, setIsBOMOpen] = useState(false);
   const [isSerialMonitorOpen, setIsSerialMonitorOpen] = useState(false);
@@ -262,12 +275,43 @@ const App: React.FC = () => {
   const [canvasResetKey, setCanvasResetKey] = useState(0);
 
   const {
-    addComponent, moveComponent, deleteComponent, rotateComponent,
+    addComponent, moveComponent, deleteComponent, deleteWire, rotateComponent,
     flipHorizontal, flipVertical, updateComponent, createConnection
   } = useComponentActions({
     components, setComponents, connections, setConnections, saveToHistory,
-    selectedComponentId, setSelectedComponentId, setIsPropertiesOpen
+    selectedComponentId, setSelectedComponentId: handleSelectComponent,
+    selectedWireIndex, setSelectedWireIndex: handleSelectWire,
+    setIsPropertiesOpen
   });
+
+  // Global Keyboard Shortcuts (Delete)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input, textarea, or contentEditable element
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (!isSimulating && (selectedComponentId || selectedWireIndex)) {
+          // Check if we actually have something to delete
+          if (selectedWireIndex) {
+            deleteWire(selectedWireIndex);
+          } else if (selectedComponentId) {
+            deleteComponent();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSimulating, selectedComponentId, selectedWireIndex, deleteWire, deleteComponent]);
 
   // FAB Touch Handlers
   const handleFabTouchStart = (e: React.TouchEvent) => {
@@ -352,10 +396,11 @@ const App: React.FC = () => {
       window.history.replaceState({}, '', newUrl);
     }
 
-    if (!urlProjectId && !prompt && !token && initializationStatus === 'initializing') {
+    if (!urlProjectId && !prompt && !token && initializationStatus === 'initializing' && !MAINTENANCE_MODE) {
       window.location.href = 'https://ziroeda.com';
       return;
     }
+
 
     if (urlProjectId) {
       const fetchProject = async () => {
@@ -465,6 +510,13 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDelete = () => {
+    if (selectedWireIndex) {
+      deleteWire(selectedWireIndex);
+    } else {
+      deleteComponent();
+    }
+  };
   const handleClear = () => {
     stopSimulation();
     setComponents([]);
@@ -571,9 +623,53 @@ const App: React.FC = () => {
 
   const selectedComponent = components.find(c => c.id === selectedComponentId);
 
+  /* --- Drag and Drop Handling --- */
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!isReadOnly) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (isReadOnly) return;
+
+    const componentType = e.dataTransfer.getData('componentType') as any;
+    if (!componentType) return;
+
+    // Calculate Drop Position
+    if (canvasRef.current) {
+      const container = canvasRef.current.getContainer();
+      const transform = canvasRef.current.getTransform();
+
+      if (container && transform) {
+        const rect = container.getBoundingClientRect();
+        const clientX = e.clientX;
+        const clientY = e.clientY;
+
+        // Convert to canvas coordinates: (screen - pan) / scale
+        const canvasX = (clientX - rect.left - transform.x) / transform.scale;
+        const canvasY = (clientY - rect.top - transform.y) / transform.scale;
+
+        // Snap to grid (10px) - Optional but good for UX
+        const snappedX = Math.round(canvasX / 10) * 10;
+        const snappedY = Math.round(canvasY / 10) * 10;
+
+        addComponent(componentType, snappedX, snappedY);
+
+        // Mobile drawer handling not needed here as drop implies interaction
+      }
+    }
+  };
+
   return (
     <ProjectGuard status={initializationStatus}>
-      <div className="flex h-[100dvh] w-screen overflow-hidden bg-dark-900 text-white font-sans relative">
+      <div
+        className="flex h-[100dvh] w-screen overflow-hidden bg-dark-900 text-white font-sans relative"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
 
         {/* --- MOBILE: Library Drawer (90% from Left) --- */}
         <div className={`fixed inset-0 z-50 md:hidden transition-all duration-300 ease-in-out ${isLibraryOpen ? 'visible opacity-100' : 'invisible opacity-0'}`}>
@@ -628,7 +724,19 @@ const App: React.FC = () => {
               isLoading={isProcessing}
               loadingMessage={loadingMessage}
               selectedComponentId={selectedComponentId}
-              onSelectComponent={(id) => { setSelectedComponentId(id); if (!id) setIsPropertiesOpen(false); }}
+              onSelectComponent={(id) => {
+                if (id && id === selectedComponentId) {
+                  // Toggle off if clicking same component
+                  setSelectedComponentId(null);
+                  setIsPropertiesOpen(false);
+                } else {
+                  // Select new component (or deselect if id is null)
+                  setSelectedComponentId(id);
+                  if (!id) setIsPropertiesOpen(false);
+                }
+              }}
+              selectedWireIndex={selectedWireIndex}
+              onSelectWire={handleSelectWire}
               onComponentMove={moveComponent}
               onDragEnd={() => saveToHistory(components, connections)}
               onConnectionCreated={createConnection}
@@ -650,8 +758,12 @@ const App: React.FC = () => {
 
           <LowerToolbar
             selectedComponentId={selectedComponentId}
-            onDelete={deleteComponent}
-            onRotate={rotateComponent}
+            isSimulating={isSimulating}
+            onSelectComponent={handleSelectComponent}
+            selectedWireIndex={selectedWireIndex}
+            onSelectWire={handleSelectWire}
+            onDelete={handleDelete}
+            onComponentMove={moveComponent}
             onFlipHorizontal={flipHorizontal}
             onFlipVertical={flipVertical}
             onUndo={handleUndo}

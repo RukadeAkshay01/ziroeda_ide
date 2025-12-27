@@ -2,6 +2,8 @@ import React from 'react';
 import ZiroedaLogo from './ZiroedaLogo';
 import { Home, AlertCircle, Lock } from 'lucide-react';
 
+import { MAINTENANCE_MODE } from '../maintenanceConfig';
+
 export type InitializationStatus = 'initializing' | 'ready' | 'not-found' | 'unauthorized' | 'validating';
 
 interface ProjectGuardProps {
@@ -10,6 +12,7 @@ interface ProjectGuardProps {
 }
 
 const ProjectGuard: React.FC<ProjectGuardProps> = ({ status, children }) => {
+    if (MAINTENANCE_MODE) return <>{children}</>;
     if (status === 'ready') return <>{children}</>;
 
     const handleReturnHome = () => {

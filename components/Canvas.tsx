@@ -20,6 +20,8 @@ interface CanvasProps {
   loadingMessage?: string;
   selectedComponentId: string | null;
   onSelectComponent: (id: string | null) => void;
+  selectedWireIndex: string | null;
+  onSelectWire: (index: string | null) => void;
   onComponentMove: (id: string, x: number, y: number) => void;
   onDragEnd?: () => void;
   onConnectionCreated?: (sourceId: string, sourcePin: string, targetId: string, targetPin: string) => void;
@@ -48,6 +50,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
   loadingMessage,
   selectedComponentId,
   onSelectComponent,
+  selectedWireIndex,
+  onSelectWire,
   onComponentMove,
   onDragEnd,
   onConnectionCreated,
@@ -108,7 +112,6 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
   const {
     dragMode,
     draggedComponentId,
-    selectedWireIndex,
     drawingState,
     mousePos,
     handlers
@@ -121,12 +124,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
     wireRoutes,
     setWireRoutes,
     onSelectComponent,
+    selectedWireIndex,
+    onSelectWire,
     onComponentMove,
     onDragEnd,
     onConnectionCreated,
     zoomAtPoint,
     isReadOnly,
-    isSimulating // Pass this
+    isSimulating
   });
 
   // 3. Propagate Simulation States (Legacy - now handled by updateVisuals)
@@ -185,6 +190,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
           drawingState={drawingState}
           mousePos={mousePos}
           onWireClick={handlers.handleWireClick}
+          onWireTouchStart={handlers.handleWireTouchStart}
           onWireHandleMouseDown={handlers.handleWireHandleMouseDown}
         />
 
@@ -211,7 +217,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({
           drawingState={drawingState}
           mousePos={mousePos}
           onWireClick={handlers.handleWireClick}
+          onWireTouchStart={handlers.handleWireTouchStart}
           onWireHandleMouseDown={handlers.handleWireHandleMouseDown}
+          onWireHandleTouchStart={handlers.handleWireHandleTouchStart}
         />
 
         {/* Layer 4 (Overlay): Pin Interactions */}

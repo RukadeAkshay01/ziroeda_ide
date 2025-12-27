@@ -147,6 +147,9 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
   onComponentEvent,
   onSelectComponent
 }) => {
+  // Track last touch time to prevent ghost clicks (emulated mousedown)
+  const lastGlobalTouchRef = React.useRef(0);
+
   return (
     <>
       {components.map((comp) => {
@@ -154,16 +157,20 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
         const isSelected = selectedComponentId === comp.id;
 
         const handleMouseDown = (e: React.MouseEvent) => {
+          // Check for ghost click (mousedown immediately following touchstart)
+          if (Date.now() - lastGlobalTouchRef.current < 500) {
+            // This is likely an emulated mouse event from a touch tap.
+            // WE MUST STOP PROPAGATION so it doesn't bubble to the Canvas and cause deselection!
+            e.stopPropagation();
+            e.preventDefault();
+            return;
+          }
+
           if (isSimulating && onComponentEvent) {
             e.stopPropagation(); // Stop propagation specifically to prevent canvas deselection
-            // e.preventDefault(); // Do NOT prevent default here, as it might block input focus? 
-            // Actually, for "clicks" we usually want propagation stopped so the canvas doesn't receive it.
 
             // If user clicks on a button in the UI, we want the button event to fire.
             // The wrapper div captures mousedown first.
-
-            // We'll let the event bubble from the inner component if it handles it?
-            // React Listeners on wrapper:
 
             onSelectComponent?.(comp.id);
             // We still send mousedown for generic interactions (like flame sensor click-and-hold)
@@ -181,13 +188,15 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
         };
 
         const handleTouchStart = (e: React.TouchEvent) => {
+          // Record touch time
+          lastGlobalTouchRef.current = Date.now();
+
           if (isSimulating && onComponentEvent) {
             // Stop propagation to prevent Canvas from seeing this as a Pan/Drag start on background
             e.stopPropagation();
             // Prevent Default to stop the browser from firing a compatibility 'mousedown'/'click' event
             // which would bubble to the Canvas and cause deselection (the "ghost click" issue).
-            // NOTE: This might prevent scrolling interactions if starting on a component, 
-            // but for simulation controls (buttons, knobs) this is usually desired.
+            // NOTE: We keep preventDefault just in case, but the timestamp check covers us if it fails.
             if (e.cancelable) e.preventDefault();
 
             onSelectComponent?.(comp.id);

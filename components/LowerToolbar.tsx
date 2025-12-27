@@ -4,6 +4,8 @@ import { Undo2, Redo2, Settings2, RotateCw, FlipVertical, FlipHorizontal, Trash2
 
 interface LowerToolbarProps {
   selectedComponentId: string | null;
+  selectedWireIndex?: string | null;
+  isSimulating?: boolean; // Add this
   onDelete: () => void;
   onRotate: () => void;
   onFlipHorizontal: () => void;
@@ -18,6 +20,8 @@ interface LowerToolbarProps {
 
 const LowerToolbar: React.FC<LowerToolbarProps> = ({
   selectedComponentId,
+  selectedWireIndex,
+  isSimulating,
   onDelete,
   onRotate,
   onFlipHorizontal,
@@ -30,7 +34,7 @@ const LowerToolbar: React.FC<LowerToolbarProps> = ({
   canRedo
 }) => {
 
-  const hasSelection = !!selectedComponentId;
+  const hasSelection = !!selectedComponentId || !!selectedWireIndex;
 
   const ToolbarButton = ({
     icon: Icon,
@@ -50,10 +54,10 @@ const LowerToolbar: React.FC<LowerToolbarProps> = ({
         onClick={onClick}
         disabled={disabled}
         className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl transition-all duration-200 border shadow-sm ${disabled
-            ? 'bg-dark-800/50 text-dark-700 border-transparent cursor-not-allowed'
-            : variant === 'danger'
-              ? 'bg-dark-800 text-red-500/80 border-dark-700 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 hover:shadow-red-900/20 hover:-translate-y-0.5'
-              : 'bg-dark-800 text-gray-400 border-dark-700 hover:bg-brand-500/10 hover:text-brand-400 hover:border-brand-500/30 hover:shadow-brand-900/20 hover:-translate-y-0.5'
+          ? 'bg-dark-800/50 text-dark-700 border-transparent cursor-not-allowed'
+          : variant === 'danger'
+            ? 'bg-dark-800 text-red-500/80 border-dark-700 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 hover:shadow-red-900/20 hover:-translate-y-0.5'
+            : 'bg-dark-800 text-gray-400 border-dark-700 hover:bg-brand-500/10 hover:text-brand-400 hover:border-brand-500/30 hover:shadow-brand-900/20 hover:-translate-y-0.5'
           }`}
         title={label}
       >
@@ -97,28 +101,28 @@ const LowerToolbar: React.FC<LowerToolbarProps> = ({
         <ToolbarButton
           icon={Settings2}
           label="Properties"
-          disabled={!hasSelection}
+          disabled={!selectedComponentId || isSimulating}
           onClick={onProperties}
         />
 
         <ToolbarButton
           icon={RotateCw}
           label="Rotate"
-          disabled={!hasSelection}
+          disabled={!selectedComponentId || isSimulating}
           onClick={onRotate}
         />
 
         <ToolbarButton
           icon={FlipVertical}
           label="V-Flip"
-          disabled={!hasSelection}
+          disabled={!selectedComponentId || isSimulating}
           onClick={onFlipVertical}
         />
 
         <ToolbarButton
           icon={FlipHorizontal}
           label="H-Flip"
-          disabled={!hasSelection}
+          disabled={!selectedComponentId || isSimulating}
           onClick={onFlipHorizontal}
         />
 
@@ -128,7 +132,7 @@ const LowerToolbar: React.FC<LowerToolbarProps> = ({
           icon={Trash2}
           label="Delete"
           variant="danger"
-          disabled={!hasSelection}
+          disabled={!hasSelection || isSimulating}
           onClick={onDelete}
         />
 

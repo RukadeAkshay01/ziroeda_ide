@@ -25,6 +25,8 @@ export const PIROverlay: React.FC<PIROverlayProps> = ({ components, layout, sele
         }
     }, [pir?.id]);
 
+    const lastTouchPosRef = useRef({ x: 0, y: 0 });
+
     // Window event listeners for smooth dragging
     useEffect(() => {
         if (!isDragging) return;
@@ -40,7 +42,23 @@ export const PIROverlay: React.FC<PIROverlayProps> = ({ components, layout, sele
             }));
         };
 
-        const handleWindowMouseUp = () => {
+        const handleWindowTouchMove = (e: TouchEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const touch = e.touches[0];
+            const dx = touch.clientX - lastTouchPosRef.current.x;
+            const dy = touch.clientY - lastTouchPosRef.current.y;
+            lastTouchPosRef.current = { x: touch.clientX, y: touch.clientY };
+
+            const scale = 1 / zoom;
+            setTargetPos(prev => ({
+                x: prev.x + dx * scale,
+                y: prev.y + dy * scale
+            }));
+        };
+
+        const handleEnd = () => {
             setIsDragging(false);
             if (onComponentEvent && pir) {
                 onComponentEvent(pir.id, 'input', { value: false });
@@ -48,12 +66,19 @@ export const PIROverlay: React.FC<PIROverlayProps> = ({ components, layout, sele
             }
         };
 
+        const handleWindowMouseUp = handleEnd;
+        const handleWindowTouchEnd = handleEnd;
+
         window.addEventListener('mousemove', handleWindowMouseMove);
         window.addEventListener('mouseup', handleWindowMouseUp);
+        window.addEventListener('touchmove', handleWindowTouchMove, { passive: false });
+        window.addEventListener('touchend', handleWindowTouchEnd);
 
         return () => {
             window.removeEventListener('mousemove', handleWindowMouseMove);
             window.removeEventListener('mouseup', handleWindowMouseUp);
+            window.removeEventListener('touchmove', handleWindowTouchMove);
+            window.removeEventListener('touchend', handleWindowTouchEnd);
         };
     }, [isDragging, zoom, pir, onComponentEvent]);
 
@@ -65,7 +90,6 @@ export const PIROverlay: React.FC<PIROverlayProps> = ({ components, layout, sele
 
     if (!pir) return null;
 
-    // PIR Parameters
     // PIR Parameters
     const range = 250;
     const innerRange = 40; // Blind spot near sensor
@@ -114,6 +138,13 @@ export const PIROverlay: React.FC<PIROverlayProps> = ({ components, layout, sele
         e.stopPropagation();
         e.preventDefault();
         setIsDragging(true);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsDragging(true);
+        lastTouchPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     };
 
     const checkDetection = () => {
@@ -169,14 +200,15 @@ export const PIROverlay: React.FC<PIROverlayProps> = ({ components, layout, sele
                 transform={`translate(${targetPos.x}, ${targetPos.y})`}
                 style={{ pointerEvents: 'auto', cursor: isDragging ? 'grabbing' : 'grab' }}
                 onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
             >
-                {/* Target Visual - Increased Size */}
-                <circle r="15" fill="#007bff" stroke="white" strokeWidth="2" />
+                {/* Target Visual - Increased Size for Mobile */}
+                <circle r="25" fill="#007bff" stroke="white" strokeWidth="2" />
 
                 {/* Pulse effect if active */}
                 {lastTriggerRef.current && (
-                    <circle r="20" fill="none" stroke="#007bff" strokeWidth="1" opacity="0.5">
-                        <animate attributeName="r" from="15" to="30" dur="1s" repeatCount="indefinite" />
+                    <circle r="30" fill="none" stroke="#007bff" strokeWidth="1" opacity="0.5">
+                        <animate attributeName="r" from="25" to="45" dur="1s" repeatCount="indefinite" />
                         <animate attributeName="opacity" from="0.5" to="0" dur="1s" repeatCount="indefinite" />
                     </circle>
                 )}

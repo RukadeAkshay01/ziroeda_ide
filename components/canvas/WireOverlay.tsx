@@ -11,7 +11,9 @@ interface WireOverlayProps {
   drawingState: DrawingState | null;
   mousePos: Point;
   onWireClick: (e: React.MouseEvent, index: string) => void;
+  onWireTouchStart: (e: React.TouchEvent, index: string) => void;
   onWireHandleMouseDown: (e: React.MouseEvent, wireIndex: string, segmentIndex: number) => void;
+  onWireHandleTouchStart?: (e: React.TouchEvent, wireIndex: string, segmentIndex: number) => void;
   layer: 'bottom' | 'top';
 }
 
@@ -22,7 +24,9 @@ const WireOverlay: React.FC<WireOverlayProps> = ({
   drawingState,
   mousePos,
   onWireClick,
+  onWireTouchStart,
   onWireHandleMouseDown,
+  onWireHandleTouchStart,
   layer
 }) => {
 
@@ -48,9 +52,9 @@ const WireOverlay: React.FC<WireOverlayProps> = ({
         // BOTTOM LAYER: Render all wire paths (passive)
         if (layer === 'bottom') {
           return (
-            <g key={`wire-bottom-${idx}`} onClick={(e) => onWireClick(e, indexStr)}>
-              {/* Transparent Hit Area */}
-              <path d={pathData} stroke="transparent" strokeWidth="12" fill="none" className="cursor-pointer pointer-events-auto" />
+            <g key={`wire-bottom-${idx}`} onMouseDown={(e) => onWireClick(e, indexStr)} onTouchStart={(e) => onWireTouchStart(e, indexStr)}>
+              {/* Transparent Hit Area - reduced opacity for debugging/interaction */}
+              <path d={pathData} stroke="rgba(255,0,0,0.01)" strokeWidth="15" fill="none" className="cursor-pointer pointer-events-auto" />
               {/* Core Wire */}
               <path d={pathData} stroke="#000000" strokeWidth="6" fill="none" opacity="0.5" strokeLinecap="round" strokeLinejoin="round" />
               <path d={pathData} stroke={color} strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none" />
@@ -77,17 +81,29 @@ const WireOverlay: React.FC<WireOverlayProps> = ({
                 if (Math.abs(p.x - nextP.x) < 10 && Math.abs(p.y - nextP.y) < 10) return null;
 
                 return (
-                  <circle
-                    key={`handle-${i}`}
-                    cx={midX}
-                    cy={midY}
-                    r={6}
-                    fill="white"
-                    stroke="#14b8a6"
-                    strokeWidth="2"
-                    className="cursor-grab hover:scale-125 transition-transform pointer-events-auto"
-                    onMouseDown={(e) => onWireHandleMouseDown(e, indexStr, i)}
-                  />
+                  <g key={`handle-${i}`}>
+                    {/* Visual Dot (Radius 6) */}
+                    <circle
+                      cx={midX}
+                      cy={midY}
+                      r={6}
+                      fill="white"
+                      stroke="#14b8a6"
+                      strokeWidth="2"
+                      className="pointer-events-none"
+                    />
+                    {/* Interaction Hit Area (Radius 12 - Transparent) */}
+                    <circle
+                      cx={midX}
+                      cy={midY}
+                      r={12}
+                      fill="transparent"
+                      stroke="none"
+                      className="cursor-grab pointer-events-auto"
+                      onMouseDown={(e) => onWireHandleMouseDown(e, indexStr, i)}
+                      onTouchStart={(e) => onWireHandleTouchStart?.(e, indexStr, i)}
+                    />
+                  </g>
                 );
               })}
             </g>

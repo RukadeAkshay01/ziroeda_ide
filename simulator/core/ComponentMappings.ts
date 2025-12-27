@@ -123,9 +123,15 @@ export const COMPONENT_MAPPINGS: Record<string, ComponentMapping> = {
                     }
                 }
             }
+        },
+        reset: (comp, el) => {
+            el.text = '';
+            el.backlight = false;
+            el.cursor = false;
+            el.blink = false;
         }
     },
-    'wokwi-lcd1602': { update: (c, e, s) => COMPONENT_MAPPINGS['lcd1602'].update(c, e, s) },
+    'wokwi-lcd1602': { update: (c, e, s) => COMPONENT_MAPPINGS['lcd1602'].update(c, e, s), reset: (c, e) => COMPONENT_MAPPINGS['lcd1602'].reset?.(c, e) },
 
     // --- OLED (SSD1306) ---
     'oled': {
@@ -168,9 +174,18 @@ export const COMPONENT_MAPPINGS: Record<string, ComponentMapping> = {
                 el.imageData = new ImageData(rgbaBuffer, width, height);
                 if (el.redraw) el.redraw();
             }
+        },
+        reset: (comp, el) => {
+            if (el.imageData) {
+                // Create transparent black image data
+                const width = 128;
+                const height = 64;
+                el.imageData = new ImageData(new Uint8ClampedArray(width * height * 4), width, height);
+                el.redraw?.();
+            }
         }
     },
-    'wokwi-ssd1306': { update: (c, e, s) => COMPONENT_MAPPINGS['oled'].update(c, e, s) },
+    'wokwi-ssd1306': { update: (c, e, s) => COMPONENT_MAPPINGS['oled'].update(c, e, s), reset: (c, e) => COMPONENT_MAPPINGS['oled'].reset?.(c, e) },
 
     // --- Pushbutton ---
     'pushbutton': {
@@ -240,9 +255,15 @@ export const COMPONENT_MAPPINGS: Record<string, ComponentMapping> = {
                 if (el.b !== 0) el.b = 0;
                 el.style.filter = 'none';
             }
+        },
+        reset: (comp, el) => {
+            el.r = 0;
+            el.g = 0;
+            el.b = 0;
+            el.style.filter = 'none';
         }
     },
-    'neopixel': { update: (c, e, s) => COMPONENT_MAPPINGS['wokwi-neopixel'].update(c, e, s) },
+    'neopixel': { update: (c, e, s) => COMPONENT_MAPPINGS['wokwi-neopixel'].update(c, e, s), reset: (c, e) => COMPONENT_MAPPINGS['wokwi-neopixel'].reset?.(c, e) },
 
     // --- 7-Segment Display ---
     'wokwi-7segment': {

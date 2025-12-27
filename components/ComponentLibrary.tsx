@@ -115,7 +115,16 @@ const ComponentLibrary: React.FC<ComponentLibraryProps> = ({ onAddComponent, isR
                 <button
                   key={item.id}
                   onClick={() => !isReadOnly && onAddComponent(item.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 group transition-all ${isReadOnly ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:text-white hover:bg-dark-800'}`}
+                  draggable={!isReadOnly}
+                  onDragStart={(e) => {
+                    if (isReadOnly) {
+                      e.preventDefault();
+                      return;
+                    }
+                    e.dataTransfer.setData('componentType', item.id);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 group transition-all ${isReadOnly ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:text-white hover:bg-dark-800 cursor-grab active:cursor-grabbing'}`}
                   disabled={isReadOnly}
                 >
                   <div className={`w-8 h-8 rounded-lg bg-dark-800 flex items-center justify-center text-gray-500 border border-dark-700 transition-all shadow-sm ${isReadOnly ? '' : 'group-hover:text-brand-400 group-hover:border-brand-500/30'}`}>

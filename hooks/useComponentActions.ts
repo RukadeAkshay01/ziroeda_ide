@@ -10,6 +10,8 @@ interface UseComponentActionsProps {
   saveToHistory: (comps: CircuitComponent[], conns: WokwiConnection[]) => void;
   selectedComponentId: string | null;
   setSelectedComponentId: (id: string | null) => void;
+  selectedWireIndex: string | null;
+  setSelectedWireIndex: (index: string | null) => void;
   setIsPropertiesOpen: (open: boolean) => void;
 }
 
@@ -21,10 +23,12 @@ export const useComponentActions = ({
   saveToHistory,
   selectedComponentId,
   setSelectedComponentId,
+  selectedWireIndex,
+  setSelectedWireIndex,
   setIsPropertiesOpen
 }: UseComponentActionsProps) => {
 
-  const addComponent = useCallback((type: ComponentType) => {
+  const addComponent = useCallback((type: ComponentType, x?: number, y?: number) => {
     const offset = components.length * 20;
 
     // Default attributes for specific components to prevent rendering errors (like NaNmm)
@@ -36,8 +40,8 @@ export const useComponentActions = ({
     const newComp: CircuitComponent = {
       id: `comp-${uuidv4().slice(0, 8)}`,
       type,
-      x: 100 + offset,
-      y: 200 + offset,
+      x: x !== undefined ? x : 100 + offset,
+      y: y !== undefined ? y : 200 + offset,
       rotation: 0,
       attributes: defaultAttributes,
       label: type.replace('wokwi-', '')
@@ -67,6 +71,22 @@ export const useComponentActions = ({
     setSelectedComponentId(null);
     setIsPropertiesOpen(false);
   }, [components, connections, selectedComponentId, setComponents, setConnections, saveToHistory, setSelectedComponentId, setIsPropertiesOpen]);
+
+  const deleteWire = useCallback((indexStr: string) => {
+    const index = parseInt(indexStr, 10);
+
+    if (isNaN(index)) {
+      return;
+    }
+
+    if (index >= 0 && index < connections.length) {
+      const newConns = [...connections];
+      newConns.splice(index, 1);
+      setConnections(newConns);
+      saveToHistory(components, newConns);
+      setSelectedWireIndex(null);
+    }
+  }, [components, connections, setConnections, saveToHistory, setSelectedWireIndex]);
 
   const rotateComponent = useCallback(() => {
     if (!selectedComponentId) return;
@@ -122,6 +142,7 @@ export const useComponentActions = ({
     addComponent,
     moveComponent,
     deleteComponent,
+    deleteWire,
     rotateComponent,
     flipHorizontal,
     flipVertical,

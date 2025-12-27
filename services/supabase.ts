@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { MAINTENANCE_MODE } from '../maintenanceConfig';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -28,6 +29,11 @@ export interface ProjectData {
 
 export const uploadProjectPreview = async (projectId: string, blob: Blob): Promise<string | null> => {
     try {
+        if (MAINTENANCE_MODE) {
+            console.log("[Maintenance] Skipping uploadProjectPreview");
+            return "https://placehold.co/600x400?text=Maintenance+Mode";
+        }
+
         const timestamp = Date.now();
         const fileName = `${projectId}_${timestamp}.png`;
 
@@ -84,6 +90,10 @@ export interface ProjectVersion {
 }
 
 export const saveProject = async (project: ProjectData) => {
+    if (MAINTENANCE_MODE) {
+        console.log("[Maintenance] Skipping saveProject", project);
+        return [{ id: 'maintenance-mock-id', ...project }];
+    }
     const { data, error } = await supabase
         .from('projects')
         .insert([
@@ -110,6 +120,10 @@ export const saveProject = async (project: ProjectData) => {
 };
 
 export const updateProject = async (projectId: string, project: Partial<ProjectData>) => {
+    if (MAINTENANCE_MODE) {
+        console.log("[Maintenance] Skipping updateProject", projectId, project);
+        return [{ id: projectId, ...project }];
+    }
     const { data, error } = await supabase
         .from('projects')
         .update({
@@ -129,6 +143,10 @@ export const updateProject = async (projectId: string, project: Partial<ProjectD
 
 
 export const loadProject = async (projectId: string) => {
+    if (MAINTENANCE_MODE) {
+        console.log("[Maintenance] Skipping loadProject", projectId);
+        return null; // Return null to simulate "new project" or handle gracefully
+    }
     const { data, error } = await supabase
         .from('projects')
         .select('*')
@@ -143,6 +161,10 @@ export const loadProject = async (projectId: string) => {
 };
 
 export const loadProjects = async (userId: string) => {
+    if (MAINTENANCE_MODE) {
+        console.log("[Maintenance] Skipping loadProjects for user", userId);
+        return [];
+    }
     const { data, error } = await supabase
         .from('projects')
         .select('*')
@@ -157,6 +179,10 @@ export const loadProjects = async (userId: string) => {
 };
 
 export const fetchProjectVersions = async (projectId: string) => {
+    if (MAINTENANCE_MODE) {
+        console.log("[Maintenance] Skipping fetchProjectVersions", projectId);
+        return [];
+    }
     const { data, error } = await supabase
         .from('project_versions')
         .select('*')
@@ -171,6 +197,17 @@ export const fetchProjectVersions = async (projectId: string) => {
 };
 
 export const createProjectVersion = async (projectId: string, design: any, commitMessage?: string) => {
+    if (MAINTENANCE_MODE) {
+        console.log("[Maintenance] Skipping createProjectVersion", projectId);
+        return {
+            id: 'maintenance-version',
+            project_id: projectId,
+            version_number: 999,
+            created_at: new Date().toISOString(),
+            design,
+            commit_message: commitMessage
+        } as ProjectVersion;
+    }
     // 1. Get current latest version number
     const { data: latestVersion, error: fetchError } = await supabase
         .from('project_versions')
