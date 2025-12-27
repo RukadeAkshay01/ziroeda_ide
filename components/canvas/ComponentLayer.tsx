@@ -155,9 +155,9 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
 
         const handleMouseDown = (e: React.MouseEvent) => {
           if (isSimulating && onComponentEvent) {
-            // e.stopPropagation(); // Maybe don't stop propagation so dragging still implies selection?
-            // Actually, we do want to stop propagation if we are interacting with controls.
-            // But if we are just selecting...
+            e.stopPropagation(); // Stop propagation specifically to prevent canvas deselection
+            // e.preventDefault(); // Do NOT prevent default here, as it might block input focus? 
+            // Actually, for "clicks" we usually want propagation stopped so the canvas doesn't receive it.
 
             // If user clicks on a button in the UI, we want the button event to fire.
             // The wrapper div captures mousedown first.
@@ -182,6 +182,14 @@ const ComponentLayer: React.FC<ComponentLayerProps> = ({
 
         const handleTouchStart = (e: React.TouchEvent) => {
           if (isSimulating && onComponentEvent) {
+            // Stop propagation to prevent Canvas from seeing this as a Pan/Drag start on background
+            e.stopPropagation();
+            // Prevent Default to stop the browser from firing a compatibility 'mousedown'/'click' event
+            // which would bubble to the Canvas and cause deselection (the "ghost click" issue).
+            // NOTE: This might prevent scrolling interactions if starting on a component, 
+            // but for simulation controls (buttons, knobs) this is usually desired.
+            if (e.cancelable) e.preventDefault();
+
             onSelectComponent?.(comp.id);
             onComponentEvent(comp.id, 'mousedown', {});
           } else {
