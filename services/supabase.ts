@@ -108,7 +108,8 @@ export const saveProject = async (project: ProjectData) => {
                 tags: project.tags || [],
                 chat_history: project.chat_history || [],
                 design: project.design,
-                preview_url: project.preview_url
+                preview_url: project.preview_url,
+                fork_of_id: project.fork_of_id
             }
         ])
         .select();
