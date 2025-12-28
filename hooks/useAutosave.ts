@@ -14,6 +14,7 @@ interface UseAutosaveProps {
     isPublic?: boolean;
     isReadOnly?: boolean;
     initializationStatus?: 'initializing' | 'ready' | 'not-found' | 'unauthorized' | 'validating';
+    forkedFromId?: string | null;
     capturePreview?: () => Promise<string | null>;
 }
 
@@ -29,6 +30,7 @@ export const useAutosave = ({
     isPublic = false,
     isReadOnly = false,
     initializationStatus = 'ready',
+    forkedFromId,
     capturePreview
 }: UseAutosaveProps) => {
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
@@ -75,9 +77,10 @@ export const useAutosave = ({
                         components,
                         connections,
                         code
-                    }
+                    },
                     // preview_url is deliberately omitted here to avoid overwriting it
                     // Previews are now saved explicitly on Version Commit or Exit
+                    fork_of_id: (!projectId && forkedFromId) ? forkedFromId : undefined
                 };
 
                 if (projectId) {
@@ -104,7 +107,7 @@ export const useAutosave = ({
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [components, connections, code, user, projectId, projectName, messages, isPublic, isReadOnly, initializationStatus]); // Dependencies that trigger save
+    }, [components, connections, code, user, projectId, projectName, messages, isPublic, isReadOnly, initializationStatus, forkedFromId]); // Dependencies that trigger save
 
     return { saveStatus, lastSavedAt };
 };

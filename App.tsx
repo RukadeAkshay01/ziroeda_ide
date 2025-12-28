@@ -157,6 +157,7 @@ const App: React.FC = () => {
   const [components, setComponents] = useState<CircuitComponent[]>([]);
   const [connections, setConnections] = useState<WokwiConnection[]>([]);
   const [arduinoCode, setArduinoCode] = useState<string>('');
+  const [forkedFromId, setForkedFromId] = useState<string | null>(null);
 
   // Autosave Hook
   const { saveStatus, lastSavedAt } = useAutosave({
@@ -171,6 +172,7 @@ const App: React.FC = () => {
     isPublic,
     isReadOnly,
     initializationStatus,
+    forkedFromId,
     capturePreview
   });
 
@@ -425,6 +427,7 @@ const App: React.FC = () => {
               setProjectName(`Copy of ${project.name || "Untitled Project"}`);
               setIsPublic(false); // Forks start private
               setIsReadOnly(false); // User owns the new copy
+              setForkedFromId(targetId); // Track origin for counting
 
               // Clean URL immediately
               const newUrl = new URL(window.location.href);

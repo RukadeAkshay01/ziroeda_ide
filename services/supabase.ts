@@ -25,6 +25,7 @@ export interface ProjectData {
         code: string;
     };
     preview_url?: string;
+    fork_of_id?: string;
 }
 
 export const uploadProjectPreview = async (projectId: string, blob: Blob): Promise<string | null> => {
