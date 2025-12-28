@@ -386,6 +386,10 @@ const App: React.FC = () => {
 
     handleAuth();
 
+    // If there's a token, wait for auth to complete/fail and URL to clean up
+    // This prevents race conditions where we try to load project before auth is ready
+    if (token) return;
+
     if (prompt && (initializationStatus === 'initializing' || initializationStatus === 'validating')) {
       // Send the message
       handleSendMessage(prompt);
@@ -481,6 +485,7 @@ const App: React.FC = () => {
 
   const handleForkRedirect = () => {
     // Navigate back to history (Project Detail Page presumably)
+    isIntentionalExitRef.current = true;
     window.history.back();
   };
 
