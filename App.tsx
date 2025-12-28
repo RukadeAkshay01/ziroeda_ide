@@ -386,10 +386,6 @@ const App: React.FC = () => {
 
     handleAuth();
 
-    // If there's a token, wait for auth to complete/fail and URL to clean up
-    // This prevents race conditions where we try to load project before auth is ready
-    if (token) return;
-
     if (prompt && (initializationStatus === 'initializing' || initializationStatus === 'validating')) {
       // Send the message
       handleSendMessage(prompt);
@@ -408,9 +404,11 @@ const App: React.FC = () => {
     }
 
 
-    if (urlProjectId) {
+    const forkId = params.get('fork');
+
+    if (urlProjectId || forkId) {
       const fetchProject = async () => {
-        const targetId = urlProjectId;
+        const targetId = urlProjectId || forkId;
 
         if (!targetId) return;
 
@@ -421,31 +419,43 @@ const App: React.FC = () => {
             setConnections(project.design.connections || []);
             setArduinoCode(project.design.code || '');
 
-            // NORMAL LOAD MODE
-            setProjectId(targetId);
-            setProjectName(project.name || "Untitled Project");
-            setIsPublic(project.is_public || false);
-            lastLoadedProjectId.current = targetId;
+            if (forkId) {
+              // FORK MODE: Load as new project
+              setProjectId(null); // Explicitly null to trigger new save
+              setProjectName(`Copy of ${project.name || "Untitled Project"}`);
+              setIsPublic(false); // Forks start private
+              setIsReadOnly(false); // User owns the new copy
+
+              // Clean URL immediately
+              const newUrl = new URL(window.location.href);
+              newUrl.searchParams.delete('fork');
+              window.history.replaceState({}, '', newUrl.toString());
+            } else {
+              // NORMAL LOAD MODE
+              setProjectId(targetId);
+              setProjectName(project.name || "Untitled Project");
+              setIsPublic(project.is_public || false);
+              lastLoadedProjectId.current = targetId;
+
+              // Determine Read-Only Status
+              if (params.get('readonly') === 'true') {
+                setIsReadOnly(true);
+              } else if (user && user.uid === project.owner_id) {
+                setIsReadOnly(false);
+              } else if (project.public_access === 'edit') {
+                setIsReadOnly(false);
+              } else {
+                setIsReadOnly(true);
+              }
+            }
 
             // Restore chat history if available
             if (project.chat_history && project.chat_history.length > 0) {
               setMessages(project.chat_history);
             }
 
-            // Determine Read-Only Status
-            if (params.get('readonly') === 'true') {
-              setIsReadOnly(true);
-            } else if (user && user.uid === project.owner_id) {
-              setIsReadOnly(false);
-            } else if (project.public_access === 'edit') {
-              setIsReadOnly(false);
-            } else {
-              setIsReadOnly(true);
-            }
-
             // Add to history
             saveToHistory(project.design.components || [], project.design.connections || []);
-
 
             // Success!
             setInitializationStatus('ready');
@@ -485,7 +495,6 @@ const App: React.FC = () => {
 
   const handleForkRedirect = () => {
     // Navigate back to history (Project Detail Page presumably)
-    isIntentionalExitRef.current = true;
     window.history.back();
   };
 
