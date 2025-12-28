@@ -16,6 +16,7 @@ interface LowerToolbarProps {
   onFitToScreen: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  isReadOnly?: boolean;
 }
 
 const LowerToolbar: React.FC<LowerToolbarProps> = ({
@@ -31,7 +32,8 @@ const LowerToolbar: React.FC<LowerToolbarProps> = ({
   onProperties,
   onFitToScreen,
   canUndo,
-  canRedo
+  canRedo,
+  isReadOnly
 }) => {
 
   const hasSelection = !!selectedComponentId || !!selectedWireIndex;
@@ -86,14 +88,14 @@ const LowerToolbar: React.FC<LowerToolbarProps> = ({
           icon={Undo2}
           label="Undo"
           onClick={onUndo}
-          disabled={!canUndo}
+          disabled={!canUndo || isReadOnly}
         />
 
         <ToolbarButton
           icon={Redo2}
           label="Redo"
           onClick={onRedo}
-          disabled={!canRedo}
+          disabled={!canRedo || isReadOnly}
         />
 
         <div className="hidden sm:block w-px h-8 bg-dark-700 flex-shrink-0 mx-1" />
@@ -101,28 +103,28 @@ const LowerToolbar: React.FC<LowerToolbarProps> = ({
         <ToolbarButton
           icon={Settings2}
           label="Properties"
-          disabled={!selectedComponentId || isSimulating}
+          disabled={!selectedComponentId || isSimulating || isReadOnly}
           onClick={onProperties}
         />
 
         <ToolbarButton
           icon={RotateCw}
           label="Rotate"
-          disabled={!selectedComponentId || isSimulating}
+          disabled={!selectedComponentId || isSimulating || isReadOnly}
           onClick={onRotate}
         />
 
         <ToolbarButton
           icon={FlipVertical}
           label="V-Flip"
-          disabled={!selectedComponentId || isSimulating}
+          disabled={!selectedComponentId || isSimulating || isReadOnly}
           onClick={onFlipVertical}
         />
 
         <ToolbarButton
           icon={FlipHorizontal}
           label="H-Flip"
-          disabled={!selectedComponentId || isSimulating}
+          disabled={!selectedComponentId || isSimulating || isReadOnly}
           onClick={onFlipHorizontal}
         />
 
@@ -132,7 +134,7 @@ const LowerToolbar: React.FC<LowerToolbarProps> = ({
           icon={Trash2}
           label="Delete"
           variant="danger"
-          disabled={!hasSelection || isSimulating}
+          disabled={!hasSelection || isSimulating || isReadOnly}
           onClick={onDelete}
         />
 

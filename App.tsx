@@ -170,6 +170,7 @@ const App: React.FC = () => {
     messages,
     isPublic,
     isReadOnly,
+    initializationStatus,
     capturePreview
   });
 
@@ -298,7 +299,7 @@ const App: React.FC = () => {
       }
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (!isSimulating && (selectedComponentId || selectedWireIndex)) {
+        if (!isSimulating && !isReadOnly && (selectedComponentId || selectedWireIndex)) {
           // Check if we actually have something to delete
           if (selectedWireIndex) {
             deleteWire(selectedWireIndex);
@@ -311,7 +312,7 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSimulating, selectedComponentId, selectedWireIndex, deleteWire, deleteComponent]);
+  }, [isSimulating, isReadOnly, selectedComponentId, selectedWireIndex, deleteWire, deleteComponent]);
 
   // FAB Touch Handlers
   const handleFabTouchStart = (e: React.TouchEvent) => {
@@ -338,6 +339,7 @@ const App: React.FC = () => {
 
   // Wrapper for adding components on mobile to close the drawer
   const handleAddComponent = (type: any) => {
+    if (isReadOnly) return;
     addComponent(type);
     if (isMobile) setIsLibraryOpen(false);
   };
@@ -404,16 +406,22 @@ const App: React.FC = () => {
 
     if (urlProjectId) {
       const fetchProject = async () => {
+        const targetId = urlProjectId;
+
+        if (!targetId) return;
+
         try {
-          const project = await loadProject(urlProjectId);
+          const project = await loadProject(targetId);
           if (project && project.design) {
             setComponents(project.design.components || []);
             setConnections(project.design.connections || []);
             setArduinoCode(project.design.code || '');
-            setProjectId(urlProjectId);
+
+            // NORMAL LOAD MODE
+            setProjectId(targetId);
             setProjectName(project.name || "Untitled Project");
             setIsPublic(project.is_public || false);
-            lastLoadedProjectId.current = urlProjectId;
+            lastLoadedProjectId.current = targetId;
 
             // Restore chat history if available
             if (project.chat_history && project.chat_history.length > 0) {
@@ -421,7 +429,9 @@ const App: React.FC = () => {
             }
 
             // Determine Read-Only Status
-            if (user && user.uid === project.owner_id) {
+            if (params.get('readonly') === 'true') {
+              setIsReadOnly(true);
+            } else if (user && user.uid === project.owner_id) {
               setIsReadOnly(false);
             } else if (project.public_access === 'edit') {
               setIsReadOnly(false);
@@ -431,6 +441,7 @@ const App: React.FC = () => {
 
             // Add to history
             saveToHistory(project.design.components || [], project.design.connections || []);
+
 
             // Success!
             setInitializationStatus('ready');
@@ -457,6 +468,21 @@ const App: React.FC = () => {
       fetchProject();
     }
   }, [user]); // Re-run when user auth state changes
+
+  // Read-only Popup Logic
+  const [showReadOnlyMessage, setShowReadOnlyMessage] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('readonly') === 'true') {
+      setShowReadOnlyMessage(true);
+    }
+  }, []);
+
+  const handleForkRedirect = () => {
+    // Navigate back to history (Project Detail Page presumably)
+    window.history.back();
+  };
 
   const handleSendMessage = async (text: string) => {
     const userMsg: ChatMessage = { id: uuidv4(), role: 'user', text };
@@ -772,6 +798,7 @@ const App: React.FC = () => {
             onFitToScreen={() => canvasRef.current?.zoomToFit()}
             canUndo={historyIndex > 0}
             canRedo={historyIndex < historyLength - 1}
+            isReadOnly={isReadOnly}
           />
         </div>
 
@@ -785,6 +812,18 @@ const App: React.FC = () => {
             isReadOnly={isReadOnly}
           />
         )}
+
+        {/* Read Only Modal */}
+        <ConfirmationModal
+          isOpen={showReadOnlyMessage}
+          onClose={() => setShowReadOnlyMessage(false)}
+          onConfirm={handleForkRedirect}
+          title="Read Only Mode"
+          message="You are in Read-Only mode. Only simulation features are active. To edit this project, please go back to the project details page and fork it from there."
+          confirmText="Go Back"
+          cancelText="Stay in Read Only"
+          type="info"
+        />
 
         {/* Exit Confirmation Modal */}
         <ConfirmationModal
@@ -815,6 +854,7 @@ const App: React.FC = () => {
             user={user}
             saveStatus={saveStatus}
             lastSavedAt={lastSavedAt}
+            isReadOnly={isReadOnly}
           />
         </div>
 
@@ -836,6 +876,7 @@ const App: React.FC = () => {
               user={user}
               saveStatus={saveStatus}
               lastSavedAt={lastSavedAt}
+              isReadOnly={isReadOnly}
             />
           </div>
         </div>
@@ -869,6 +910,7 @@ const App: React.FC = () => {
             components={components}
             onCodeChange={(newCode) => setArduinoCode(newCode)}
             onClose={() => setIsCodeEditorOpen(false)}
+            isReadOnly={isReadOnly}
           />
         )}
 

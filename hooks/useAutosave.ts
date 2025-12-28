@@ -13,6 +13,7 @@ interface UseAutosaveProps {
     messages: any[];
     isPublic?: boolean;
     isReadOnly?: boolean;
+    initializationStatus?: 'initializing' | 'ready' | 'not-found' | 'unauthorized' | 'validating';
     capturePreview?: () => Promise<string | null>;
 }
 
@@ -27,6 +28,7 @@ export const useAutosave = ({
     messages,
     isPublic = false,
     isReadOnly = false,
+    initializationStatus = 'ready',
     capturePreview
 }: UseAutosaveProps) => {
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
@@ -49,6 +51,7 @@ export const useAutosave = ({
 
         if (!user) return;
         if (isReadOnly) return;
+        if (initializationStatus !== 'ready') return;
 
         // Set status to unsaved/saving pending
         setSaveStatus('saving');
@@ -101,7 +104,7 @@ export const useAutosave = ({
                 clearTimeout(timeoutRef.current);
             }
         };
-    }, [components, connections, code, user, projectId, projectName, messages, isPublic, isReadOnly]); // Dependencies that trigger save
+    }, [components, connections, code, user, projectId, projectName, messages, isPublic, isReadOnly, initializationStatus]); // Dependencies that trigger save
 
     return { saveStatus, lastSavedAt };
 };

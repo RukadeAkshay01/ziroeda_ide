@@ -80,7 +80,8 @@ export const useCanvasInteractions = ({
   }, [drawingState, onSelectComponent, setSelectedWireIndex]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (isReadOnly) return; // Disable interactions in read-only mode (except maybe pan/zoom which is handled by transform hook)
+    // We allow MouseDown in ReadOnly for PANNING, but the component/wire handlers
+    // will block their specific actions.
 
     // Only handle left click
     if (e.button !== 0) return; {
@@ -102,8 +103,13 @@ export const useCanvasInteractions = ({
     }
     e.stopPropagation();
     if (drawingState) return;
+
     onSelectComponent(id);
     setSelectedWireIndex(null); // Clear wire selection
+
+    // Read Only: Select only, no dragging
+    if (isReadOnly) return;
+
     setDragMode('COMPONENT');
     setDraggedComponentId(id);
     hasMovedRef.current = false;
@@ -134,6 +140,8 @@ export const useCanvasInteractions = ({
 
   const handleWireHandleMouseDown = (e: React.MouseEvent, wireIndex: string, segmentIndex: number) => {
     e.stopPropagation();
+    if (isReadOnly) return;
+
     const points = wireRoutes.get(wireIndex);
     if (!points) return;
 
@@ -208,6 +216,8 @@ export const useCanvasInteractions = ({
   const handlePinClick = (e: React.MouseEvent | React.TouchEvent, compId: string, pinName: string, x: number, y: number) => {
     e.stopPropagation();
     // e.preventDefault(); // Removed to allow scrolling if needed, handled in touch handlers
+
+    if (isReadOnly) return;
 
     // Disable wiring during simulation
     if (isSimulating) return;
@@ -343,6 +353,13 @@ export const useCanvasInteractions = ({
 
     if (e.touches.length !== 1) return;
 
+    // Read Only: Select only, no dragging (Touch)
+    if (isReadOnly) {
+      componentHandledTouch.current = true;
+      onSelectComponent(id);
+      return;
+    }
+
     // Mark that we handled this touch so the container doesn't start PAN
     componentHandledTouch.current = true;
 
@@ -365,6 +382,7 @@ export const useCanvasInteractions = ({
   // Wire Handle Touch Handler
   const handleWireHandleTouchStart = (e: React.TouchEvent, wireIndex: string, segmentIndex: number) => {
     e.stopPropagation();
+    if (isReadOnly) return;
     if (e.touches.length !== 1) return;
 
     componentHandledTouch.current = true;

@@ -175,8 +175,9 @@ const VersionHistoryPanel: React.FC<VersionHistoryPanelProps> = ({
                                     ID: {version.id.slice(0, 6)}
                                 </span>
                                 <button
-                                    onClick={() => onLoadVersion(version)}
-                                    className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 hover:text-brand-400 bg-dark-900 hover:bg-dark-700 px-2 py-1 rounded transition-colors border border-dark-700"
+                                    onClick={() => !isReadOnly && onLoadVersion(version)}
+                                    disabled={isReadOnly}
+                                    className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded transition-colors border border-dark-700 ${isReadOnly ? 'text-gray-600 bg-dark-800 cursor-not-allowed opacity-50' : 'text-gray-400 hover:text-brand-400 bg-dark-900 hover:bg-dark-700'}`}
                                 >
                                     <RotateCcw className="w-3 h-3" />
                                     Restore

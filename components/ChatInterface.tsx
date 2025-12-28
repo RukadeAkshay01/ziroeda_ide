@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage } from '../types';
-import { Send, Cpu, Trash2, ArrowRight, User as UserIcon, Loader2 } from 'lucide-react';
+import { ArrowRight, User as UserIcon, Loader2 } from 'lucide-react';
 import { User } from 'firebase/auth';
 
 interface ChatInterfaceProps {
@@ -13,6 +13,7 @@ interface ChatInterfaceProps {
   user: User | null;
   saveStatus?: 'saved' | 'saving' | 'unsaved' | 'error';
   lastSavedAt?: Date | null;
+  isReadOnly?: boolean;
 }
 
 const FormattedMessage: React.FC<{ text: string }> = ({ text }) => {
@@ -74,7 +75,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onProjectNameChange,
   user,
   saveStatus,
-  lastSavedAt
+  lastSavedAt,
+  isReadOnly
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -85,7 +87,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && !isProcessing) {
+    if (input.trim() && !isProcessing && !isReadOnly) {
       onSendMessage(input.trim());
       setInput('');
     }
@@ -99,7 +101,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           type="text"
           value={projectName}
           onChange={(e) => onProjectNameChange(e.target.value)}
-          className="flex-1 bg-transparent text-lg sm:text-xl font-bold text-gray-200 uppercase tracking-wider hover:text-brand-400 focus:text-brand-400 focus:outline-none transition-colors placeholder-gray-600"
+          disabled={isReadOnly}
+          className={`flex-1 bg-transparent text-lg sm:text-xl font-bold text-gray-200 uppercase tracking-wider hover:text-brand-400 focus:text-brand-400 focus:outline-none transition-colors placeholder-gray-600 ${isReadOnly ? 'cursor-not-allowed opacity-80' : ''}`}
           placeholder="UNTITLED PROJECT"
         />
 
@@ -193,13 +196,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={isProcessing}
-            placeholder="Ask Ziro..."
-            className="w-full bg-dark-800 text-gray-300 placeholder-gray-500 rounded-xl pl-4 pr-12 py-3 border border-dark-700 focus:outline-none focus:border-brand-500/50 transition-all text-sm"
+            disabled={isProcessing || isReadOnly}
+            placeholder={isReadOnly ? "Chat disabled in Read-only mode" : "Ask Ziro..."}
+            className={`w-full bg-dark-800 text-gray-300 placeholder-gray-500 rounded-xl pl-4 pr-12 py-3 border border-dark-700 focus:outline-none focus:border-brand-500/50 transition-all text-sm ${isReadOnly ? 'cursor-not-allowed opacity-60' : ''}`}
           />
           <button
             type="submit"
-            disabled={!input.trim() || isProcessing}
+            disabled={!input.trim() || isProcessing || isReadOnly}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 bg-brand-500 text-white rounded-lg hover:bg-brand-400 disabled:opacity-30 disabled:bg-dark-700 disabled:text-gray-400 transition-all shadow-lg shadow-brand-500/20"
           >
             <ArrowRight className="w-4 h-4" />

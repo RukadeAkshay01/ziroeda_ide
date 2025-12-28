@@ -9,9 +9,10 @@ interface CodeEditorProps {
   components: CircuitComponent[];
   onCodeChange: (newCode: string) => void;
   onClose: () => void;
+  isReadOnly?: boolean;
 }
 
-const CodeEditor: React.FC<CodeEditorProps> = ({ code, components, onCodeChange, onClose }) => {
+const CodeEditor: React.FC<CodeEditorProps> = ({ code, components, onCodeChange, onClose, isReadOnly }) => {
   const [localCode, setLocalCode] = useState(code);
   const [copied, setCopied] = useState(false);
 
@@ -143,7 +144,8 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ code, components, onCodeChange,
               <select
                 value={selectedBoardId}
                 onChange={(e) => setSelectedBoardId(e.target.value)}
-                className="w-full appearance-none bg-dark-700 text-brand-400 text-[10px] md:text-xs font-mono border border-dark-700 rounded px-2 py-1 pr-6 focus:outline-none focus:border-brand-500/50 cursor-pointer truncate"
+                disabled={isReadOnly}
+                className={`w-full appearance-none bg-dark-700 text-brand-400 text-[10px] md:text-xs font-mono border border-dark-700 rounded px-2 py-1 pr-6 focus:outline-none focus:border-brand-500/50 cursor-pointer truncate ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {boards.length > 0 ? (
                   boards.map(b => (
@@ -201,9 +203,10 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ code, components, onCodeChange,
           <textarea
             value={localCode}
             onChange={handleTextAreaChange}
+            readOnly={isReadOnly}
             spellCheck={false}
-            className="absolute inset-0 w-full h-full bg-transparent p-4 md:p-6 font-mono text-xs md:text-sm text-brand-50/90 leading-relaxed resize-none focus:outline-none scrollbar-hide selection:bg-brand-500/30"
-            placeholder="// Type your Arduino code here..."
+            className={`absolute inset-0 w-full h-full bg-transparent p-4 md:p-6 font-mono text-xs md:text-sm text-brand-50/90 leading-relaxed resize-none focus:outline-none scrollbar-hide selection:bg-brand-500/30 ${isReadOnly ? 'cursor-not-allowed opacity-80' : ''}`}
+            placeholder={isReadOnly ? "// Code editing disabled in Read-only mode" : "// Type your Arduino code here..."}
           />
         </div>
       </div>
